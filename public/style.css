@@ -8,3 +8,36 @@
 .home{display:block;max-width:460px;margin:0 auto}.home .entry{padding:0}.home h1{font-size:28px;letter-spacing:-.5px;margin:0 0 24px}.page-title.compact h1{font-size:22px;letter-spacing:-.5px}.settings:has(>h2:only-child){display:grid;place-items:center;min-height:160px}.role-card .panel-heading{margin-bottom:12px}.table-center .eyebrow:empty{display:none}main{min-height:calc(100vh - 84px)}@media(max-width:760px){main{min-height:calc(100vh - 68px)}.home{max-width:460px}}
 
 .lobby-browser{margin-top:22px}.lobby-browser .panel-heading{margin-bottom:10px}.lobby-browser h2{font-size:20px}.lobby-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;border-top:1px solid var(--border)}.lobby-details{min-width:0;display:flex;flex-direction:column;gap:3px}.lobby-code{font:18px Consolas,monospace;letter-spacing:3px;color:var(--green)}.lobby-host{font-size:13px;overflow-wrap:anywhere}.lobby-details small{font-size:11px;color:var(--muted)}.lobby-row .btn{flex-shrink:0;min-height:40px;padding:8px 14px}.lobby-empty{font-size:13px;margin-bottom:0}.lobby-list{max-height:420px;overflow-y:auto}
+
+/* The dialog lives outside the game view, so live updates never restart its animation. */
+body.dossier-open{overflow:hidden}
+.dossier{position:fixed;inset:0;width:100%;height:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:radial-gradient(ellipse at 50% 40%,#283027ee,#0d1110f7 75%);color:var(--text);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.dossier::backdrop{background:#0b100fd9;backdrop-filter:blur(8px)}
+.dossier[open]{animation:dossier-fade .25s ease-out both}
+.dossier-close{position:fixed;top:max(16px,env(safe-area-inset-top));right:max(18px,env(safe-area-inset-right));z-index:5;display:grid;place-items:center;width:46px;height:46px;background:#1a211d;border:1px solid #66715f;border-radius:50%;color:var(--text);font:30px/1 var(--font)}
+.dossier-close:hover{background:#333d32}
+.dossier-stage{display:flex;align-items:center;justify-content:center;min-height:100%;padding:84px 28px 48px;perspective:1500px}
+.dossier-folder{position:relative;width:min(620px,100%);padding:18px;background:#a69a72;border:1px solid #c1b28a;border-radius:3px 12px 12px 3px;box-shadow:0 32px 100px #0008;animation:dossier-arrive .65s cubic-bezier(.18,.75,.25,1) both;isolation:isolate}
+.dossier-folder::before{content:'';position:absolute;left:-1px;top:-19px;width:33%;height:20px;background:#a69a72;border:1px solid #c1b28a;border-bottom:0;border-radius:7px 12px 0 0}
+.dossier-paper{position:relative;min-width:0;min-height:400px;background:repeating-linear-gradient(0deg,#00000002 0px,#00000002 1px,transparent 1px,transparent 4px),#e5dfca;color:#252c25;padding:32px 38px;box-shadow:0 3px 10px #332b2840;animation:dossier-paper-in .55s .55s both}
+.dossier-heading{display:flex;justify-content:space-between;gap:18px;align-items:center;padding-bottom:20px;border-bottom:1px solid #969c8466;font:11px/1.5 Consolas,monospace;letter-spacing:2px;color:#616953}
+.dossier-role{display:table;margin:28px 0 24px;padding:7px 15px;border:2px solid currentColor;color:#3d5e3d;font:700 clamp(27px,5vw,40px)/1.2 Consolas,monospace;letter-spacing:2px;transform:rotate(-3deg)}
+.dossier-paper.is-spy .dossier-role{color:#a73e30}
+.dossier-word{margin:30px 0 22px}
+.dossier-word span,.dossier-intel span{display:block;font:10px/1.6 Consolas,monospace;letter-spacing:1.6px;color:#636b57}
+.dossier-word strong{display:block;margin-top:8px;font-size:clamp(30px,5.5vw,50px);line-height:1.15;font-weight:750;letter-spacing:-1px;overflow-wrap:anywhere}
+.dossier-intel{padding:16px 0;border-top:1px solid #969c8466}
+.dossier-intel b{display:block;margin-top:5px;font-size:18px;line-height:1.5;font-weight:500;overflow-wrap:anywhere}
+.dossier-return.btn{width:100%;margin-top:24px;background:#29362b;border-color:#29362b;color:#f0eddf;min-height:52px}
+.dossier-return.btn:hover{background:#3d503c;border-color:#3d503c}
+.dossier-return:focus-visible{outline-color:#29362b}
+.dossier-cover{position:absolute;inset:-1px;z-index:2;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:30px;pointer-events:none;transform-origin:left center;background:linear-gradient(90deg,#91835e 0%,#b8a97e 4%,#b8a97e 96%,#9b8e69);border:1px solid #d5c294;border-radius:3px 12px 12px 3px;box-shadow:inset 6px 0 10px #4a3c3326;backface-visibility:hidden;animation:dossier-unfold .95s .25s cubic-bezier(.4,0,.2,1) both}
+.dossier-cover::before{content:'';position:absolute;inset:28px;border:1px solid #665e4255;border-left:3px solid #665e4244}
+.dossier-cover-title{font:700 clamp(30px,7vw,56px)/1 Consolas,monospace;letter-spacing:8px;color:#454834}
+.dossier-seal{display:grid;place-items:center;width:70px;height:70px;border:2px solid #8a3e2e;color:#8a3e2e;font-size:42px;font-weight:800;transform:rotate(-9deg)}
+@keyframes dossier-fade{from{opacity:0}to{opacity:1}}
+@keyframes dossier-arrive{from{opacity:0;transform:translateY(70px) rotate(-7deg) scale(.83)}to{opacity:1;transform:translateY(0) rotate(0) scale(1)}}
+@keyframes dossier-unfold{0%,10%{transform:rotateY(0);opacity:1;visibility:visible}85%{opacity:1}100%{transform:rotateY(-160deg);opacity:0;visibility:hidden}}
+@keyframes dossier-paper-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:600px){.dossier-stage{padding:80px 16px 32px}.dossier-folder{padding:11px}.dossier-paper{padding:24px 20px;min-height:380px}.dossier-heading{font-size:9px;letter-spacing:1.5px}.dossier-intel b{font-size:16px}.dossier-role{margin:25px 0}.dossier-cover::before{inset:20px}}
+@media(prefers-reduced-motion:reduce){.dossier[open],.dossier-folder,.dossier-paper{animation:none}.dossier-cover{animation:none;display:none}}
