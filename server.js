@@ -1,0 +1,32 @@
+'use strict';
+const http=require('node:http');const fs=require('node:fs');const path=require('node:path');const {Game}=require('./game');
+function createApp(options={}){
+ const game=new Game(options),streams=new Map(),rates=new Map();
+ const send=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
+ const broadcast=()=>{for(const [token,res] of streams){const s=game.sessions.get(token);if(s)res.write('data: '+JSON.stringify(game.view(s))+'\n\n');}};
+ const server=http.createServer(async(req,res)=>{
+  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  const url=new URL(req.url,'http://localhost');
+  if(url.pathname==='/healthz')return send(res,200,{ok:true});
+  if(req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)return send(res,403,{error:'Недопустимый источник запроса.'});
+  if(url.pathname==='/events'){
+   const token=url.searchParams.get('token'),s=game.sessions.get(token);if(!s)return send(res,401,{error:'Сессия истекла. Обновите страницу.'});
+   const old=streams.get(token);if(old)old.end();res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});res.write(': connected\n\n');streams.set(token,res);game.connection(s,true);broadcast();
+   req.on('close',()=>{if(streams.get(token)===res){streams.delete(token);game.connection(s,false);broadcast();}});return;
+  }
+  if(url.pathname.startsWith('/api/')&&req.method==='POST'){
+   try{
+    const key=req.socket.remoteAddress;const now=Date.now();let rate=rates.get(key);if(!rate||now-rate.start>10000){rate={start:now,count:0};rates.set(key,rate);}if(++rate.count>400)return send(res,429,{error:'Слишком много запросов. Подождите несколько секунд.'});
+    let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>8192)return send(res,413,{error:'Слишком большой запрос.'});}const body=JSON.parse(raw||'{}');
+    if(url.pathname==='/api/session'){let s=game.sessions.get(body.token);if(!s)s=game.session();s.lastSeen=Date.now();return send(res,200,{token:s.token,...game.view(s)});}
+    const s=game.sessions.get(body.token);if(!s)return send(res,401,{error:'Сессия истекла. Обновите страницу.'});game.act(s,body.action,body.data||{});broadcast();return send(res,200,{ok:true});
+   }catch(e){return send(res,400,{error:e.message});}
+  }
+  const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css'};const file=files[url.pathname];if(!file){res.writeHead(404);return res.end('Not found');}
+  res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.setHeader('Cache-Control','no-cache');fs.createReadStream(path.join(__dirname,'public',file)).pipe(res);
+ });
+ const tick=setInterval(()=>{game.tick();broadcast();for(const [key,r] of rates)if(Date.now()-r.start>60000)rates.delete(key);},1000);tick.unref();
+ return {server,game,broadcast,close:()=>{clearInterval(tick);for(const res of streams.values())res.end();server.close();}};
+}
+if(require.main===module){const app=createApp();app.server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('Spy Dossier listening'));process.on('SIGTERM',()=>{app.close();setTimeout(()=>process.exit(0),1000).unref();});}
+module.exports={createApp};
