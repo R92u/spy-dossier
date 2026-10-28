@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let state={room:null},token='',source,online=false,signature='',roleViewed=false,lastRound='',lastPhase='',autoDossier='',toastTimer;
+let state={room:null},token='',source,online=false,signature='',roleViewed=false,lastRound='',lastPhase='',autoDossier='',overlayKey='',toastTimer;
 let profile={name:'',played:0,wins:0,results:[]};try{const p=JSON.parse(localStorage.getItem('dossier-profile')||'null');if(p&&typeof p==='object'){profile.name=typeof p.name==='string'?p.name.slice(0,20):'';profile.played=Number.isSafeInteger(p.played)?Math.max(0,p.played):0;profile.wins=Number.isSafeInteger(p.wins)?Math.max(0,p.wins):0;profile.results=Array.isArray(p.results)?p.results.slice(-100):[];}}catch{}
 let draft={word:'',theme:'',hint:'',spyId:'random'},guessDraft='',joinCode='';
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4500);}
@@ -31,24 +31,67 @@ $('dossier').addEventListener('click',e=>{
  else if(e.target.closest('[data-dossier-close]')||e.target===$('dossier')||e.target.classList.contains('dossier-stage'))closeDossier();
 });
 function table(r){const ps=r.order.map(id=>r.players.find(p=>p.id===id)).filter(Boolean);return `<div class="table-wrap"><div class="table-ring"><div class="crosshair"></div>${r.phase==='selecting'?'<div class="turn-spinner" aria-label="Выбор первого игрока"><span>➤</span></div>':''}<div class="table-center"><span class="eyebrow">${r.phase==='playing'?'КРУГ '+r.cycle:''}</span><h2>${r.phase==='reveal'?'Досье: '+esc(r.players.find(p=>p.id===r.dealTo)?.name||''):r.phase==='selecting'?'Выбираем первый ход':r.phase==='voting'?'Голосование':r.phase==='guessing'?'Шпион угадывает':esc(r.players.find(p=>p.id===r.current)?.name||'')}</h2>${r.phase==='playing'?'<p>Сейчас ходит</p>':''}</div></div>${ps.map((p,i)=>{const a=2*Math.PI*i/ps.length-Math.PI/2;return `<div class="seat seat-${i} ${p.id===r.current&&r.phase==='playing'?'current':''} ${!p.alive?'eliminated':''}" data-seat="${i}"><span class="seat-number">${String(i+1).padStart(2,'0')}</span><div class="seat-avatar">${esc(p.name[0])}</div><b>${esc(p.name)}</b><small>${!p.alive?'Выбыл':!p.connected?'Нет связи':r.phase==='reveal'?(p.ready?'Готов':'Читает досье'):p.id===r.current&&r.phase==='playing'?'Его ход':p.id===state.me?'Это вы':'За столом'}</small></div>`;}).join('')}</div>`;}
-function game(r){const me=r.players.find(p=>p.id===state.me),host=r.role==='host',spy=r.role==='spy';let special='';if(r.phase==='voting'){special=`<section class="panel vote-panel"><div class="panel-heading"><div><span class="eyebrow">ГОЛОСОВАНИЕ / ${esc(r.vote.initiator)}</span><h2>Выберите игрока</h2></div><span id="timer" class="timer"></span></div><p class="muted">Нужно ${r.vote.required} из ${r.vote.total} голосов. Подано ${r.vote.count}.</p><div class="vote-options">${r.players.filter(p=>!p.host&&p.alive).map(p=>button(esc(p.name),'vote','secondary '+(r.vote.myVote===p.id?'selected':''),`data-target="${p.id}" ${host||!me.alive||r.vote.voted?'disabled':''}`)).join('')}${button('Воздержаться','abstain','ghost',host||!me.alive||r.vote.voted?'disabled':'')}</div>${r.vote.voted?'<p class="success">Ваш голос учтён.</p>':''}</section>`;}if(r.phase==='guessing'){special=`<section class="panel guess-panel"><h2>Угадывание слова</h2><p class="muted">Одна попытка.</p><label for="guess">${spy?'Ваша догадка':'Шпион сейчас пишет'}</label><input id="guess" maxlength="80" autocomplete="off" value="${esc(spy?guessDraft:r.guess||'')}" placeholder="${spy?'Введите секретное слово…':'Ждём первые буквы…'}" ${spy?'':'readonly'}>${spy?button('Отправить ответ →','guessSubmit','primary wide'):''}</section>`;}
+function game(r){const me=r.players.find(p=>p.id===state.me),host=r.role==='host',spy=r.role==='spy';let special='';if(r.phase==='voting'){special=`<section class="panel vote-panel"><div class="panel-heading"><div><span class="eyebrow">ГОЛОСОВАНИЕ / ${esc(r.vote.initiator)}</span><h2>Выберите игрока</h2></div><span id="timer" class="timer"></span></div><p class="muted">Нужно ${r.vote.required} из ${r.vote.total} голосов. Подано ${r.vote.count}.</p><div class="vote-options">${r.players.filter(p=>!p.host&&p.alive).map(p=>button(esc(p.name),'vote','secondary '+(r.vote.myVote===p.id?'selected':''),`data-target="${p.id}" ${host||!me.alive||r.vote.voted?'disabled':''}`)).join('')}${button('Воздержаться','abstain','ghost',host||!me.alive||r.vote.voted?'disabled':'')}</div>${r.vote.voted?'<p class="success">Ваш голос учтён.</p>':''}</section>`;}if(r.phase==='guessing'){special=`<section class="panel guess-panel"><h2>Угадывание слова</h2><p class="muted">Одна попытка.</p><label for="guess">${spy?'Ваша догадка':'Шпион сейчас пишет'}</label><div class="animated-input"><input id="guess" maxlength="80" autocomplete="off" value="${esc(spy?guessDraft:r.guess||'')}" placeholder="${spy?'Введите секретное слово…':'Ждём первые буквы…'}" ${spy?'':'readonly'}><div class="letter-window" aria-hidden="true"><div class="letter-track"></div></div></div>${spy?button('Отправить ответ →','guessSubmit','primary wide'):''}</section>`;}
 if(special)return `<div class="round-overlay"><div class="round-overlay-content">${special}${r.phase==='voting'&&spy&&me.alive?button('Угадать слово','guessStart','ghost wide'):''}</div></div>`;
 return `<div class="page-title compact"><div><h1>Раунд ${r.round}</h1></div><span class="badge">${r.players.filter(p=>!p.host&&p.alive).length} В ИГРЕ</span></div><div class="game-grid"><aside>${host?`<details class="host-intel"><summary>Досье ведущего</summary>${privateCard(r)}</details>`:button('Моё досье','role','ghost',`id="role-button" ${r.phase==='selecting'||(r.phase==='reveal'&&r.dealTo!==state.me&&!me.ready)?'disabled':''}`)}${r.notice?`<div class="notice">${esc(r.notice)}</div>`:''}${!me.alive&&!host?'<div class="rule-note">Вы выбыли.</div>':''}</aside><section class="table-section">${table(r)}${r.phase==='reveal'?`<div class="action-caption">${r.players.filter(p=>!p.host&&p.ready).length} / ${r.players.filter(p=>!p.host).length} игроков готовы</div>`:r.phase==='playing'?`<div class="actions">${host||me.id===r.current&&me.alive?button(host?'Передать ход →':'Закончить мой ход →','next','primary'):''}${!host&&me.alive?button('Начать голосование','voteStart'):''}${spy&&me.alive?button('Я знаю слово','guessStart','ghost'):''}</div>`:''}${r.phase==='voting'&&spy&&me.alive?button('Угадать слово вместо голосования','guessStart','ghost wide'):''}</section></div>${special}`;}
 function end(r){const spy=r.players.find(p=>p.id===r.result.spyId);return `<section class="result panel"><div class="result-symbol">${r.result.winner==='spy'?'◈':'✓'}</div><h1>${r.result.winner==='spy'?'Шпион победил.':'Мирные победили.'}</h1><p class="lead">${esc(r.result.reason)}</p><div class="answer"><span>СЕКРЕТНОЕ СЛОВО</span><strong>${esc(r.result.word)}</strong></div><p class="muted">Шпион — <b>${esc(spy?.name)}</b>${r.guess?` · Ответ: «${esc(r.guess)}»`:''}</p>${r.role==='host'?button('Следующий раунд →','reset','primary'): '<p class="field-note">Ожидание ведущего.</p>'}</section>`;}
 function render(force=false){const r=state.room;if(r?.roundId!==lastRound){closeDossier();lastRound=r?.roundId;roleViewed=false;autoDossier='';guessDraft='';}if(!r||['waiting','ended'].includes(r.phase)||(r.phase!==lastPhase&&['voting','guessing','selecting'].includes(r.phase)))closeDossier();lastPhase=r?.phase;if(r?.phase==='ended'&&r.role!=='host'&&!profile.results.includes(r.result.id)){profile.played++;if((r.role==='spy')===(r.result.winner==='spy'))profile.wins++;profile.results.push(r.result.id);profile.results=profile.results.slice(-100);save();}
- const copy=JSON.parse(JSON.stringify(state));if(copy.room?.phase==='guessing')copy.room.guess='';const sig=JSON.stringify(copy);if(!force&&signature===sig){if(r?.phase==='guessing'&&r.role!=='spy'&&$('guess'))$('guess').value=r.guess||'';updateTimer();return;}signature=sig;
- const focus=document.activeElement?.id,pos=document.activeElement?.selectionStart;
+ const copy=JSON.parse(JSON.stringify(state));if(copy.room?.phase==='guessing')copy.room.guess='';const sig=JSON.stringify(copy);if(!force&&signature===sig){if(r?.phase==='guessing'&&r.role!=='spy'&&$('guess')){$('guess').value=r.guess||'';syncLetters($('guess'));}updateTimer();return;}signature=sig;
+ const focus=document.activeElement?.id,pos=document.activeElement?.selectionStart,endPos=document.activeElement?.selectionEnd;
+ const key=r&&['voting','guessing'].includes(r.phase)?r.roundId+':'+r.phase+':'+(r.vote?.endsAt||''):'';const entering=key!==overlayKey;const oldInput=!entering?document.querySelector('.animated-input'):null;overlayKey=key;
  document.body.classList.toggle('at-table',!!r&&!['waiting','ended'].includes(r.phase));document.querySelector('.top').inert=!!r&&['voting','guessing'].includes(r.phase);
  $('app').innerHTML=!r?home():r.phase==='waiting'?waiting(r):r.phase==='ended'?end(r):game(r);$('leave').hidden=!r;
+ const overlay=document.querySelector('.round-overlay');if(overlay&&entering)overlay.classList.add('arriving');
+ if(oldInput&&document.querySelector('.animated-input'))document.querySelector('.animated-input').replaceWith(oldInput);
+ if($('guess')){if(r.role!=='spy')$('guess').value=r.guess||'';syncLetters($('guess'));}
+ document.querySelectorAll('.vote-options .btn').forEach((b,i)=>b.style.setProperty('--item-delay',Math.min(i,8)*35+'ms'));
  if(r?.order){const seats=document.querySelectorAll('[data-seat]');seats.forEach((seat,i)=>{const a=2*Math.PI*i/seats.length-Math.PI/2;seat.style.left=(50+40*Math.cos(a))+'%';seat.style.top=(50+39*Math.sin(a))+'%';});}
  positionSpinner();
  if(r?.phase==='reveal'&&r.dealTo===state.me&&autoDossier!==r.roundId){autoDossier=r.roundId;openDossier();}
- if(focus&&$(focus)&&!$('dossier').open){ $(focus).focus();if(typeof pos==='number'&&['text','search'].includes($(focus).type))$(focus).setSelectionRange(pos,pos);}
+ if(focus&&$(focus)&&!$('dossier').open){ $(focus).focus();if(typeof pos==='number'&&['text','search'].includes($(focus).type))$(focus).setSelectionRange(pos,endPos??pos);}
  if(r?.phase==='guessing'&&r.role==='spy'&&!focus)$('guess').focus();updateTimer();}
+
+// Keep the native input for selection, caret, undo, paste and mobile keyboards.
+// Only the decorative, aria-hidden letter layer is animated.
+const letterStates=new WeakMap();
+const graphemes=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ru',{granularity:'grapheme'}):null;
+function animateLetter(node,frames,options){
+ if(matchMedia('(prefers-reduced-motion: reduce)').matches)return null;
+ return node.animate(frames,{duration:240,easing:'cubic-bezier(.2,.75,.25,1)',...options});
+}
+function syncLetters(input){
+ if(!input?.closest('.animated-input'))return;
+ const wrapper=input.closest('.animated-input'),track=wrapper.querySelector('.letter-track');
+ let previous=letterStates.get(input)||[];
+ const chars=graphemes?Array.from(graphemes.segment(input.value),s=>s.segment):Array.from(input.value);
+ if(chars.join('')===previous.map(n=>n.textContent).join('')){track.style.transform='translateX('+(-input.scrollLeft)+'px)';return;}
+ // LCS keeps unchanged glyphs stable when editing the middle or replacing a selection.
+ const dp=Array.from({length:previous.length+1},()=>new Uint16Array(chars.length+1));
+ for(let i=previous.length-1;i>=0;i--)for(let j=chars.length-1;j>=0;j--)dp[i][j]=previous[i].textContent===chars[j]?1+dp[i+1][j+1]:Math.max(dp[i+1][j],dp[i][j+1]);
+ const keep=new Map();let i=0,j=0;
+ while(i<previous.length&&j<chars.length){if(previous[i].textContent===chars[j]){keep.set(j,previous[i]);i++;j++;}else if(dp[i+1][j]>=dp[i][j+1])i++;else j++;}
+ const oldPositions=new Map(previous.map(n=>[n,n.offsetLeft]));
+ const retained=new Set(keep.values());
+ for(const node of previous)if(!retained.has(node)){
+  const ghost=node.cloneNode(true);ghost.classList.add('letter-leaving');ghost.style.left=node.offsetLeft+'px';track.append(ghost);node.remove();
+  const animation=animateLetter(ghost,[{opacity:1,transform:'translateY(0) scale(1)',filter:'blur(0)'},{opacity:0,transform:'translateY(-16px) scale(.7)',filter:'blur(4px)'}],{duration:210});
+  if(animation){animation.onfinish=()=>ghost.remove();animation.oncancel=()=>ghost.remove();}else ghost.remove();
+ }
+ const next=chars.map((char,index)=>{let node=keep.get(index);if(!node){node=document.createElement('span');node.className='letter';node.textContent=char;}track.append(node);return node;});
+ next.forEach((node,index)=>{
+  if(!keep.has(index))animateLetter(node,[{opacity:0,transform:'translateY(14px) scale(.75)',filter:'blur(4px)'},{opacity:1,transform:'translateY(0) scale(1)',filter:'blur(0)'}],{duration:280,delay:Math.min(index,6)*12});
+  else {const delta=oldPositions.get(node)-node.offsetLeft;if(delta)animateLetter(node,[{transform:'translateX('+delta+'px)'},{transform:'translateX(0)'}],{duration:180});}
+ });
+ letterStates.set(input,next);track.style.transform='translateX('+(-input.scrollLeft)+'px)';
+}
+$('app').addEventListener('scroll',e=>{if(e.target.id==='guess')syncLetters(e.target);},true);
+$('app').addEventListener('compositionstart',e=>{if(e.target.id==='guess')e.target.closest('.animated-input').classList.add('composing');});
+$('app').addEventListener('compositionend',e=>{if(e.target.id==='guess'){e.target.closest('.animated-input').classList.remove('composing');syncLetters(e.target);}});
+
 function positionSpinner(){const r=state.room,spinner=document.querySelector('.turn-spinner');if(!spinner||!r)return;const box=document.querySelector('.table-wrap').getBoundingClientRect(),a=2*Math.PI*r.order.indexOf(r.current)/r.order.length;const angle=Math.atan2(.4*box.width*Math.sin(a),.39*box.height*Math.cos(a))*180/Math.PI;spinner.style.setProperty('--finish',(1440+(angle+360)%360)+'deg');spinner.style.animationDelay=-Math.max(0,4500-(r.selectionEndsAt-Date.now()))+'ms';}
 window.addEventListener('resize',positionSpinner);
 function updateTimer(){if($('timer')&&state.room?.vote)$('timer').textContent=Math.max(0,Math.ceil((state.room.vote.endsAt-Date.now())/1000))+' с';}
-$('app').addEventListener('input',e=>{const {id,value}=e.target;if(id==='name'){profile.name=value.slice(0,20);save();}if(['word','theme','hint','spyId'].includes(id))draft[id]=value;if(id==='code')joinCode=value;if(id==='guess'){guessDraft=value;act('guessType',{text:value});}});
+$('app').addEventListener('input',e=>{const {id,value}=e.target;if(id==='name'){profile.name=value.slice(0,20);save();}if(['word','theme','hint','spyId'].includes(id))draft[id]=value;if(id==='code')joinCode=value;if(id==='guess'){guessDraft=value;syncLetters(e.target);act('guessType',{text:value});}});
 $('app').addEventListener('change',e=>{if(e.target.id==='spyId')draft.spyId=e.target.value;});
 $('app').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='code')act('join',{name:profile.name,code:$('code').value});});
 $('app').addEventListener('click',async e=>{const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const a=b.dataset.action;if(a==='joinListed'){await act('join',{name:profile.name,code:b.dataset.code});return;}if(a==='role'){openDossier();return;}if(a==='copy'){try{await navigator.clipboard.writeText(state.room.code);toast('Код скопирован');}catch{toast('Код лобби: '+state.room.code);}return;}if(a==='create'||a==='join'){await act(a,{name:profile.name,code:$('code')?.value});return;}if(a==='start'){await act(a,draft);return;}if(a==='vote'||a==='abstain'){await act('vote',{targetId:a==='abstain'?null:b.dataset.target});return;}if(a==='guessStart')guessDraft='';if(a==='guessSubmit'){await act(a,{text:guessDraft});return;}await act(a);});
