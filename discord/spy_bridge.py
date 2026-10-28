@@ -215,6 +215,35 @@ def install_spy(bot, channel_owners=None):
         except Exception as exc:
             await interaction.followup.send(str(exc) if isinstance(exc, ValueError) else 'Ошибка восстановления; проверьте право Mute Members.', ephemeral=True)
 
+    # Prefix commands work immediately, including installations without a slash menu.
+    # Delete the one-use code message when channel permissions allow it.
+    def prefix_command(name, command, needs_code):
+        async def invoke(ctx, code: str = ''):
+            from types import SimpleNamespace
+            async def defer(**kwargs):
+                return None
+            async def send(content, **kwargs):
+                await ctx.send(content, delete_after=30, allowed_mentions=discord.AllowedMentions.none())
+            try:
+                await ctx.message.delete()
+            except discord.HTTPException:
+                pass
+            if needs_code and not code:
+                await send('Укажите код: ~' + name + ' КОД_С_САЙТА')
+                return
+            proxy = SimpleNamespace(guild=ctx.guild, user=ctx.author,
+                                    response=SimpleNamespace(defer=defer),
+                                    followup=SimpleNamespace(send=send))
+            if needs_code:
+                await command.callback(proxy, code)
+            else:
+                await command.callback(proxy)
+        bot.command(name=name)(invoke)
+
+    prefix_command('spy_connect', spy_connect, True)
+    prefix_command('spy_join', spy_join, True)
+    prefix_command('spy_disconnect', spy_disconnect, False)
+
     async def ready():
         nonlocal started, recovery
         if started:
@@ -233,7 +262,11 @@ def install_spy(bot, channel_owners=None):
             controller.launch(channel_id)
         try:
             await bot.tree.sync()
-            print('[spy] Команды /spy_connect, /spy_join, /spy_disconnect зарегистрированы')
+            for guild in bot.guilds:
+                target = discord.Object(id=guild.id)
+                bot.tree.copy_global_to(guild=target)
+                await bot.tree.sync(guild=target)
+            print('[spy] Готово: ~spy_connect, ~spy_join, ~spy_disconnect; slash-команды также зарегистрированы')
         except Exception:
             print('[spy] Не удалось зарегистрировать команды; проверьте область applications.commands')
 
