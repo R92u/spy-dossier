@@ -1,3 +1,8 @@
 node_modules/
 .env
 *.log
+__pycache__/
+*.pyc
+.spy-voice-state.json
+.spy-voice-state.tmp
+.env
