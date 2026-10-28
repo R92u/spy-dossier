@@ -14,3 +14,25 @@ test('departing host closes lobby for everyone',()=>{const {g,host,players}=setu
 test('new round random assignment and invalid joins',()=>{const {g,host,players,r,ready}=setup();const extra=g.session();assert.throws(()=>g.act(extra,'join',{code:r.code,name:'Extra'}));ready();g.act(players[0],'guessStart');g.act(players[0],'guessSubmit',{text:'wrong'});g.act(host,'reset');g.act(host,'start',{word:'Маяк',theme:'Море',hint:'Свет',spyId:'random'});assert.equal(r.round,2);assert.ok(players.some(p=>p.id===r.spyId));assert.equal(r.phase,'reveal');});
 test('normalization preserves meaningful punctuation and handles ё and spaces',()=>{assert.equal(normalized('  СЕВЕРНЫЙ   ПОЛЮС '),'северный полюс');assert.notEqual(normalized('маяк!'),normalized('маяк'));});
 test('HTTP health, sessions, streaming, invalid credentials and static assets',async()=>{const app=createApp();await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+app.server.address().port;const post=(path,data)=>fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});let reader;try{assert.equal((await fetch(base+'/healthz')).status,200);assert.match(await (await fetch(base+'/')).text(),/Шпион/);const session=await (await post('/api/session',{})).json();assert.ok(session.token);const stream=await fetch(base+'/events?token='+session.token);reader=stream.body.getReader();const chunk=new TextDecoder().decode((await reader.read()).value);assert.match(chunk,/data:/);assert.equal((await post('/api/action',{token:session.token,action:'create',data:{name:'Test'}})).status,200);assert.equal((await post('/api/action',{token:'invalid',action:'create'})).status,401);assert.equal((await fetch(base+'/game.js')).status,404);assert.equal((await fetch(base+'/api/session',{method:'POST',headers:{origin:'https://evil.invalid'}})).status,403);}finally{if(reader)await reader.cancel();app.close();}});
+
+test('lobby directory exposes only public metadata and updates through room lifecycle',()=>{
+ const {g,host,players,r,ready}=setup();const visitor=g.session();
+ let directory=g.view(visitor).lobbies;assert.equal(directory.length,1);
+ assert.deepEqual(Object.keys(directory[0]).sort(),['code','hostName','playerCount','maxPlayers','phase','hostOnline','joinable'].sort());
+ assert.equal(directory[0].hostName,'Ведущий');assert.equal(directory[0].playerCount,4);assert.equal(directory[0].joinable,false);
+ assert.ok(!JSON.stringify(directory).includes('Ёлка'));assert.ok(!JSON.stringify(directory).includes(players[0].id));
+ ready();g.act(players[0],'guessStart');g.act(players[0],'guessSubmit',{text:'wrong'});
+ assert.equal(g.view(visitor).lobbies[0].phase,'ended');g.act(host,'reset');assert.equal(g.view(visitor).lobbies[0].joinable,true);
+ g.act(visitor,'join',{code:r.code,name:'Новый'});assert.equal(g.list()[0].playerCount,5);
+ g.act(visitor,'leave');assert.equal(g.list()[0].playerCount,4);
+ g.connection(host,false);assert.equal(g.list()[0].joinable,false);assert.equal(g.list()[0].hostOnline,false);
+ g.connection(host,true);assert.equal(g.list()[0].joinable,true);
+ g.act(host,'leave');assert.deepEqual(g.view(visitor).lobbies,[]);
+});
+test('full lobbies stay visible but cannot be joined; available ones sort first',()=>{
+ const g=new Game();const host=g.session();g.connection(host,true);g.act(host,'create',{name:'Full'});
+ for(let i=0;i<12;i++){const p=g.session();g.connection(p,true);g.act(p,'join',{code:host.room,name:'Player '+i});}
+ const other=g.session();g.connection(other,true);g.act(other,'create',{name:'Open'});
+ const list=g.list();assert.equal(list[0].code,other.room);assert.equal(list[1].playerCount,12);assert.equal(list[1].joinable,false);
+ const visitor=g.session();assert.throws(()=>g.act(visitor,'join',{code:host.room,name:'Overflow'}));
+});
