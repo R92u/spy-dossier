@@ -6,3 +6,6 @@ __pycache__/
 .spy-voice-state.json
 .spy-voice-state.tmp
 .env
+
+.spy-profile-key
+
