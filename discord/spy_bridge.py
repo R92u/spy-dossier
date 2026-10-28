@@ -29,9 +29,9 @@ class VoiceController:
             pass
         temporary.replace(self.path)
 
-    async def post(self, route, data, token=None):
+    async def post(self, route, data, token=None, *, area='voice'):
         headers = {'Authorization': 'Bearer ' + token} if token else {}
-        async with self.http.post(SITE + '/api/voice/' + route, json=data, headers=headers) as response:
+        async with self.http.post(SITE + '/api/' + area + '/' + route, json=data, headers=headers) as response:
             result = await response.json()
             if response.status != 200:
                 raise ValueError(result.get('error', 'Сервер игры недоступен'))
@@ -169,6 +169,25 @@ def install_spy(bot, channel_owners=None):
             raise ValueError('Бот запускается, попробуйте через несколько секунд')
         return channel
 
+    @bot.tree.command(name='spy_link', description='Сохранить Discord в профиле сайта Шпион')
+    @app_commands.describe(code='Одноразовый код из раздела Профиль на сайте')
+    async def spy_link(interaction: discord.Interaction, code: str):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            secret = os.getenv('SPY_PROFILE_SECRET', '').strip()
+            if not secret:
+                key_path = Path(__file__).with_name('.spy-profile-key')
+                secret = key_path.read_text('utf-8').strip() if key_path.exists() else ''
+            if len(secret) < 32:
+                raise ValueError('Привязка профиля пока не настроена владельцем бота')
+            if controller.http is None:
+                raise ValueError('Бот запускается, попробуйте через несколько секунд')
+            await controller.post('confirm', {'code': code.strip(), 'userId': str(interaction.user.id),
+                                             'name': str(interaction.user)}, secret, area='profile')
+            await interaction.followup.send('Discord сохранён в профиле браузера. В новых лобби он будет привязываться автоматически.', ephemeral=True)
+        except Exception as exc:
+            await interaction.followup.send(str(exc) if isinstance(exc, ValueError) else 'Не удалось сохранить профиль. Попробуйте ещё раз.', ephemeral=True)
+
     @bot.tree.command(name='spy_connect', description='Связать голосовой канал с лобби Шпиона')
     @app_commands.describe(code='Одноразовый код ведущего из настроек лобби')
     async def spy_connect(interaction: discord.Interaction, code: str):
@@ -181,7 +200,7 @@ def install_spy(bot, channel_owners=None):
             controller.data['bindings'][str(channel.id)] = {'token': result['token'], 'guild': str(interaction.guild.id), 'room': result['room']}
             controller.save()
             controller.launch(str(channel.id))
-            await interaction.followup.send('Канал привязан. Игроки: возьмите личный код в лобби и выполните /spy_join.', ephemeral=True)
+            await interaction.followup.send('Канал и ведущий привязаны. Игроки с сохранённым Discord подключаются автоматически. Остальные: откройте «Профиль» на сайте и выполните ~spy_link с личным кодом.', ephemeral=True)
         except Exception as exc:
             await interaction.followup.send(str(exc) if isinstance(exc, ValueError) else 'Не удалось подключить канал. Проверьте доступность игры.', ephemeral=True)
 
@@ -242,6 +261,7 @@ def install_spy(bot, channel_owners=None):
 
     prefix_command('spy_connect', spy_connect, True)
     prefix_command('spy_join', spy_join, True)
+    prefix_command('spy_link', spy_link, True)
     prefix_command('spy_disconnect', spy_disconnect, False)
 
     async def ready():
@@ -266,7 +286,7 @@ def install_spy(bot, channel_owners=None):
                 target = discord.Object(id=guild.id)
                 bot.tree.copy_global_to(guild=target)
                 await bot.tree.sync(guild=target)
-            print('[spy] Готово: ~spy_connect, ~spy_join, ~spy_disconnect; slash-команды также зарегистрированы')
+            print('[spy] Готово: ~spy_link, ~spy_connect, ~spy_join, ~spy_disconnect; slash-команды также зарегистрированы')
         except Exception:
             print('[spy] Не удалось зарегистрировать команды; проверьте область applications.commands')
 
@@ -292,3 +312,4 @@ def install_spy(bot, channel_owners=None):
 
     bot.close = close
     return controller
+
