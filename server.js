@@ -18,6 +18,7 @@ function createApp(options={}){
    try{
     const key=req.socket.remoteAddress;const now=Date.now();let rate=rates.get(key);if(!rate||now-rate.start>10000){rate={start:now,count:0};rates.set(key,rate);}if(++rate.count>400)return send(res,429,{error:'Слишком много запросов. Подождите несколько секунд.'});
     let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>8192)return send(res,413,{error:'Слишком большой запрос.'});}const body=JSON.parse(raw||'{}');
+    if(url.pathname.startsWith('/api/voice/')){const token=req.headers.authorization?.replace(/^Bearer /,'');let result;if(url.pathname==='/api/voice/connect')result=game.voice.connect(body);else if(url.pathname==='/api/voice/join')result=game.voice.join(token,body);else if(url.pathname==='/api/voice/poll')result=game.voice.poll(token,body);else if(url.pathname==='/api/voice/disconnect')result=game.voice.disconnect(token);else return send(res,404,{error:'Не найдено'});broadcast();return send(res,200,result);}
     if(url.pathname==='/api/session'){let s=game.sessions.get(body.token);if(!s)s=game.session();s.lastSeen=Date.now();return send(res,200,{token:s.token,...game.view(s)});}
     const s=game.sessions.get(body.token);if(!s)return send(res,401,{error:'Сессия истекла. Обновите страницу.'});game.act(s,body.action,body.data||{});broadcast();return send(res,200,{ok:true});
    }catch(e){return send(res,400,{error:e.message});}
