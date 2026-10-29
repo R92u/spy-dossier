@@ -1,7 +1,7 @@
 'use strict';
 const abilityNames={coin:'50/50',silence:'Радиомолчание',vowels:'Гласный след',probe:'Пробник',shuffle:'Перетасовка',reverse:'Смена курса',spotlight:'Голос толпы'};
 const abilityDescriptions={coin:'Один бросок. Орёл открывает первую букву слова.',silence:'Один игрок пропустит ближайший ход. Его микрофон выключится до конца следующего чужого хода.',vowels:'Узнать число гласных: 0, 1, 2 или 3 и больше.',probe:'Проверить одну букву: есть ли она в слове, без указания позиции.',shuffle:'Перемешать места всех игроков и начать новый круг со случайного участника.',reverse:'Развернуть очередь тех, кто ещё не ходил в этом круге.',spotlight:'Дать выбранному игроку дополнительное слово. Затем вернётся прерванный ход.'};
-let abilityTargetOpen=false,abilityProbeDraft='',abilityCoinSeen='',abilityCoinEvent=null,wheelCaptionTimer,coinCloseTimer,shuffleTimer,lastShuffleUI='',lastSpotlightUI='';
+let abilityTargetOpen=false,abilityProbeDraft='',abilityCoinSeen='',abilityCoinEvent=null,wheelCaptionTimer,coinCloseTimer,lastShuffleUI='',lastSpotlightUI='';
 const wheelItems=pool=>Array.from({length:pool.length===1?6:pool.length<4?pool.length*2:pool.length},(_,i)=>pool[i%pool.length]);
 function abilitySettings(r){
  const a=r.abilities||{enabled:false,wheel:true,censored:false,pool:['coin']},host=r.hostId===state.me;
@@ -28,14 +28,22 @@ function abilityWheel(r){
  const masked=!d.result,items=wheelItems(d.pool);
  return `<section class="ability-wheel-screen" aria-label="Выбор способности"><span class="eyebrow">СПОСОБНОСТЬ ШПИОНА</span><h1>${masked?'Под грифом «секретно»':'Испытайте удачу'}</h1><div class="ability-wheel-stage"><div class="ability-wheel-pointer" aria-hidden="true"></div><div class="ability-wheel" data-wheel="${esc(d.id)}">${items.map((id,i)=>`<span class="wheel-label" data-wheel-label="${i}">${masked?'?':abilityNames[id]}</span>`).join('')}</div><div class="wheel-hub" aria-hidden="true">Ш</div></div><h2 class="wheel-caption" aria-live="polite">Выбираем способность…</h2><p class="ability-wheel-legend">${masked?'Результат увидит только шпион':d.pool.map(id=>abilityNames[id]).join(' · ')}</p>${r.testMode?testControls(r):''}</section>`;
 }
-function abilityShuffleOverlay(r){return r.abilityShuffle?'<div class="ability-shuffle-overlay" aria-label="Перетасовка мест"><div class="shuffle-mark"><strong>⇄</strong><p>Перетасовка</p></div></div>':'';}
 function positionAbilityShuffle(r){
- const d=r?.abilityShuffle,veil=document.querySelector('.ability-shuffle-overlay');clearTimeout(shuffleTimer);
- if(!d||!veil)return;
- if(lastShuffleUI!==d.id){lastShuffleUI=d.id;window.scrollTo({top:0,left:0,behavior:'instant'});}
- const elapsed=Math.max(0,Date.now()-d.startedAt),remaining=d.blackoutEndsAt-Date.now();
- veil.style.animationDelay=-elapsed+'ms';
- if(remaining<=0)veil.hidden=true;else shuffleTimer=setTimeout(()=>{if(state.room?.abilityShuffle?.id===d.id){veil.hidden=true;document.querySelector('.table-section')?.classList.add('table-shake');}},remaining);
+ const d=r?.abilityShuffle;let veil=document.getElementById('shuffle-effect');
+ if(!d||r.phase!=='shuffling'){
+  veil?.remove();lastShuffleUI='';document.body.style.removeProperty('--shuffle-age');document.body.style.removeProperty('--shuffle-cover-time');return;
+ }
+ // Keep the curtain outside the rerendered/shaking game so it always covers the viewport.
+ if(!veil||lastShuffleUI!==d.id){
+  veil?.remove();veil=document.createElement('div');veil.id='shuffle-effect';veil.className='ability-shuffle-overlay';veil.setAttribute('aria-hidden','true');
+  veil.innerHTML='<div class="shuffle-shutter shuffle-shutter-top"></div><div class="shuffle-shutter shuffle-shutter-bottom"></div><div class="shuffle-mark"><span>⇄</span></div>';
+  // Seed the offset once: changing a negative delay on a running CSS animation would
+  // count elapsed time twice. These nodes survive every game-content rerender.
+  const elapsed=Math.max(0,Date.now()-d.startedAt),coverTime=Math.max(1,d.blackoutEndsAt-d.startedAt);
+  document.body.style.setProperty('--shuffle-age',elapsed+'ms');
+  document.body.style.setProperty('--shuffle-cover-time',coverTime+'ms');
+  document.body.append(veil);lastShuffleUI=d.id;window.scrollTo({top:0,left:0,behavior:'instant'});
+ }
 }
 function positionSpotlight(r){
  const id=r?.spotlight?.targetId;if(!id){lastSpotlightUI='';return;}

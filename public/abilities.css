@@ -150,20 +150,24 @@
 .ability-probe input{width:90px;min-width:70px;max-width:90px;min-height:44px;padding:7px 10px;font:24px/1.2 Consolas,monospace;text-align:center;text-transform:uppercase;border-color:#8f7d43;caret-color:#f0d57d}
 .ability-probe .btn{min-height:44px;padding:9px 16px;border-color:#8f7d43;background:#38351f;color:#ead78f}
 .ability-probe .field-note{flex-basis:100%;margin:0}
-.ability-shuffle-overlay{position:fixed;inset:0;z-index:8;display:grid;place-items:center;padding:28px;background:#030605;color:#dbe2d4;pointer-events:auto;overscroll-behavior:contain;animation:ability-blackout-in .16s ease-out both}
-.shuffle-mark{display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;color:#c5cba9;font:13px/1.6 Consolas,monospace;letter-spacing:2px}
-.shuffle-mark>.shuffle-icon,.shuffle-mark>strong{color:#e2cf89;font-size:54px;line-height:1.15;font-weight:400;letter-spacing:0}
-.shuffle-mark p{margin:0;font:inherit}
-body.shuffling:has(.ability-shuffle-overlay){overflow:hidden}
-.table-shake{animation:ability-table-shake .5s ease-out both;transform-origin:center}
+.ability-shuffle-overlay{position:fixed;inset:0;z-index:30;overflow:hidden;pointer-events:auto;overscroll-behavior:contain;background:transparent!important;animation:shuffle-cover-lifetime var(--shuffle-cover-time,1200ms) linear both;animation-delay:calc(0ms - var(--shuffle-age,0ms))}
+.shuffle-shutter{position:absolute;left:0;width:100%;height:calc(50% + 2px);background:#000;will-change:transform;animation-duration:var(--shuffle-cover-time,1200ms);animation-timing-function:cubic-bezier(.65,0,.2,1);animation-fill-mode:both;animation-delay:calc(0ms - var(--shuffle-age,0ms))}
+.shuffle-shutter-top{top:0;animation-name:shuffle-curtain-top;border-bottom:1px solid #ffffff10}
+.shuffle-shutter-bottom{bottom:0;animation-name:shuffle-curtain-bottom;border-top:1px solid #ffffff10}
+.shuffle-mark{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font:52px/1 Consolas,monospace;animation:shuffle-mark-pulse var(--shuffle-cover-time,1200ms) linear both;animation-delay:calc(0ms - var(--shuffle-age,0ms))}
+body.shuffling{overflow:hidden}
+body.shuffling>.top,body.shuffling>#app{animation:shuffle-screen-impact 900ms linear both;animation-delay:calc(var(--shuffle-cover-time,1200ms)*.58 - var(--shuffle-age,0ms));transform-origin:center}
 .seat.spotlight{z-index:5;transform:translate(-50%,-50%) scale(1.25);transition:transform .35s cubic-bezier(.2,.7,.3,1)}
 .seat.spotlight .seat-avatar{border-color:#e2c669;color:#efda91;background:#32351f;box-shadow:0 0 0 4px #d5bd5720,0 0 28px #d5bd5729}
 .seat.spotlight small{color:#dfc773}
 .seat.spotlight b{color:#f1e3b8}
 body.spotlight-active .table-center{transform:translateY(90px)}
 body.spotlight-active .table-center h2{font-size:17px}
-@keyframes ability-blackout-in{from{opacity:0}to{opacity:1}}
-@keyframes ability-table-shake{0%,100%{transform:translate(0,0) rotate(0)}18%{transform:translate(-5px,2px) rotate(-.4deg)}36%{transform:translate(4px,-2px) rotate(.4deg)}54%{transform:translate(-3px,1px) rotate(-.2deg)}74%{transform:translate(2px,-1px) rotate(.1deg)}}
+@keyframes shuffle-cover-lifetime{0%,99.99%{visibility:visible}100%{visibility:hidden;pointer-events:none}}
+@keyframes shuffle-curtain-top{0%{transform:translateY(-100%)}24%,58%{transform:translateY(0)}100%{transform:translateY(-100%)}}
+@keyframes shuffle-curtain-bottom{0%{transform:translateY(100%)}24%,58%{transform:translateY(0)}100%{transform:translateY(100%)}}
+@keyframes shuffle-mark-pulse{0%,23%,85%,100%{opacity:0;transform:scale(.9)}32%,58%{opacity:1;transform:scale(1)}72%{opacity:0;transform:scale(1.1)}}
+@keyframes shuffle-screen-impact{0%,100%{transform:translate(0,0) rotate(0)}8%{transform:translate(-13px,7px) rotate(-.6deg)}18%{transform:translate(12px,-6px) rotate(.55deg)}29%{transform:translate(-10px,-4px) rotate(-.45deg)}41%{transform:translate(9px,5px) rotate(.35deg)}54%{transform:translate(-7px,3px) rotate(-.25deg)}68%{transform:translate(5px,-3px) rotate(.15deg)}82%{transform:translate(-3px,1px) rotate(-.08deg)}}
 @media(max-width:480px){
  .ability-test-picker,.test-controls .ability-test-picker{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
  .ability-probe{gap:8px}
@@ -172,12 +176,15 @@ body.spotlight-active .table-center h2{font-size:17px}
  .seat.spotlight{transform:translate(-50%,-50%) scale(1.2)}
  body.spotlight-active .table-center{transform:translateY(82px)}
  body.spotlight-active .table-center h2{font-size:14px}
- .shuffle-mark{font-size:11px;letter-spacing:1.5px}
+ .shuffle-mark{font-size:38px}
 }
 @media(prefers-reduced-motion:reduce){
- .ability-shuffle-overlay,.table-shake{animation:none}
+ body.shuffling>.top,body.shuffling>#app{animation:none}
+ .shuffle-shutter{animation-name:shuffle-curtain-still;animation-timing-function:linear}
+ .shuffle-mark{display:none}
  .seat.spotlight{transition:none}
 }
+@keyframes shuffle-curtain-still{0%,58%{transform:none;opacity:1}100%{transform:none;opacity:0}}
 .ability-test-picker{display:block;width:min(760px,100%);margin:16px auto;color:#b5b9a5}.ability-test-picker>strong{font-size:12px}.ability-test-picker>.field-note{margin:3px 0 10px}.ability-test-picker>div{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:7px}.at-table main:has(.ability-test-picker){min-height:950px;overflow:visible}.at-table main:has(.ability-test-picker) .game-grid{min-height:700px}
 @media(max-width:480px){.ability-test-picker>div{grid-template-columns:1fr 1fr}.at-table main:has(.ability-test-picker){min-height:1080px}}
 body.spotlight-active .table-center{visibility:hidden}.wheel-label{font-size:12px;max-width:42%}
