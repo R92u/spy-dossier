@@ -57,3 +57,6 @@ body.dossier-open{overflow:hidden}
 
 .discord-profile{border-top:1px solid var(--border);padding-top:22px;margin-top:24px}.discord-profile h2{font-size:20px;margin:0}.discord-account{display:flex;gap:12px;align-items:center}.discord-account>div{flex:1;min-width:0}.discord-account strong{overflow-wrap:anywhere}.discord-account small{display:block;color:var(--muted);font-size:11px;margin-top:3px}.profile-pairing{animation:detail-appear .25s both}.profile-pairing .btn{margin-right:8px}.discord-profile .field-note{margin:12px 0}.discord-profile .voice-code{width:100%}
 
+
+.test-controls{display:flex;flex-shrink:0;align-items:center;justify-content:space-between;gap:12px;border:1px solid #bfa95a66;background:#24291d;padding:10px 16px;margin-bottom:12px;border-radius:4px}.test-controls strong{color:#ead883}.test-controls small{display:block;color:var(--muted);margin-top:3px}.test-controls>div:last-child{display:flex;gap:8px;flex-wrap:wrap}.round-overlay .test-controls{margin-top:16px}.switch-row input:disabled{opacity:.55;cursor:default}@media(max-width:620px){.test-controls{align-items:flex-start;flex-direction:column;font-size:12px}.test-controls .btn{padding:9px 12px}}
+.at-table main:has(>.test-controls) .game-grid{position:relative}.at-table main:has(>.test-controls) .game-grid>aside{top:0;right:0}
