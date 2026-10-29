@@ -59,7 +59,7 @@ function render(force=false){const r=state.room;if(r?.phase!==lastPhase&&r&&!['w
  const focus=document.activeElement?.id,pos=document.activeElement?.selectionStart,endPos=document.activeElement?.selectionEnd;
  const key=r&&['voting','guessing'].includes(r.phase)?r.roundId+':'+r.phase+':'+(r.vote?.endsAt||''):'';const entering=key!==overlayKey;const oldInput=!entering?document.querySelector('.animated-input'):null;overlayKey=key;
  document.body.classList.toggle('spotlight-active',!!r?.spotlight);document.body.classList.toggle('shuffling',r?.phase==='shuffling');document.body.classList.toggle('at-table',!!r&&!['waiting','ended'].includes(r.phase));document.querySelector('.top').inert=!!r&&['voting','guessing','ability-draw','shuffling'].includes(r.phase);
- $('app').innerHTML=!r?home():r.phase==='waiting'?waiting(r):r.phase==='ended'?end(r):r.phase==='ability-draw'?abilityWheel(r):game(r);$('leave').hidden=!r;
+ updateAppMarkup(!r?home():r.phase==='waiting'?waiting(r):r.phase==='ended'?end(r):r.phase==='ability-draw'?abilityWheel(r):game(r),r);$('leave').hidden=!r;
  const overlay=document.querySelector('.round-overlay');if(overlay&&entering)overlay.classList.add('arriving');
  if(oldInput&&document.querySelector('.animated-input'))document.querySelector('.animated-input').replaceWith(oldInput);
  if($('guess')){if(!guessWriter(r))$('guess').value=r.guess||'';syncLetters($('guess'));}
@@ -67,7 +67,7 @@ function render(force=false){const r=state.room;if(r?.phase!==lastPhase&&r&&!['w
  positionSeats(r);
  positionSpinner();
  if(r?.phase==='reveal'&&r.dealTo===state.me&&autoDossier!==r.roundId){autoDossier=r.roundId;openDossier();}
- if(focus&&$(focus)&&!$('dossier').open){ $(focus).focus();if(typeof pos==='number'&&['text','search'].includes($(focus).type))$(focus).setSelectionRange(pos,endPos??pos);}
+ if(focus&&$(focus)&&!$('dossier').open){ $(focus).focus({preventScroll:true});if(typeof pos==='number'&&['text','search'].includes($(focus).type))$(focus).setSelectionRange(pos,endPos??pos);}
  if(r?.phase==='guessing'&&guessWriter(r)&&!focus)$('guess').focus();syncAbilityEffects(r);syncDossierState(r);updateTimer();}
 
 // Keep the native input for selection, caret, undo, paste and mobile keyboards.
