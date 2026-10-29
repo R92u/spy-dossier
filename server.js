@@ -24,7 +24,7 @@ function createApp(options={}){
     const s=game.sessions.get(body.token);if(!s)return send(res,401,{error:'Сессия истекла. Обновите страницу.'});game.act(s,body.action,body.data||{});broadcast();return send(res,200,{ok:true});
    }catch(e){return send(res,400,{error:e.message});}
   }
-  const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/abilities-ui.js':'abilities-ui.js','/abilities.css':'abilities.css'};const file=files[url.pathname];if(!file){res.writeHead(404);return res.end('Not found');}
+  const files={'/':'index.html','/app.js':'app.js','/style.css':'style.css','/abilities-ui.js':'abilities-ui.js','/abilities.css':'abilities.css','/settings.css':'settings.css','/settings.js':'settings.js','/layout.css':'layout.css','/themes.css':'themes.css','/space-background.js':'space-background.js'};const file=files[url.pathname];if(!file){res.writeHead(404);return res.end('Not found');}
   res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':'text/html; charset=utf-8');res.setHeader('Cache-Control','no-cache');fs.createReadStream(path.join(__dirname,'public',file)).pipe(res);
  });
  const tick=setInterval(()=>{game.tick();broadcast();for(const [key,r] of rates)if(Date.now()-r.start>60000)rates.delete(key);},1000);tick.unref();

@@ -1,0 +1,98 @@
+/* A full-width home and a centered board, with independent side rails. */
+.top{max-width:none;padding-inline:30px}
+main:has(>.home){max-width:none;padding:24px 30px;min-height:calc(100dvh - 84px)}
+.home{width:100%;max-width:none;margin:0}
+.home-surface{min-height:calc(100dvh - 132px);padding:clamp(28px,4vw,64px);display:flex;flex-direction:column}
+.home-heading{padding-bottom:30px;border-bottom:1px solid var(--border)}
+.home-heading h1{font-size:clamp(36px,4vw,60px);margin:0;letter-spacing:-1.8px}
+.home-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(36px,8vw,140px);flex:1;align-items:start;padding-top:clamp(28px,5vh,64px)}
+.home-play{width:100%;max-width:600px;align-self:center}
+.home-play>label:first-child{margin-top:0}
+.home-play input{min-height:56px}
+.home-play .btn{min-height:54px}
+.home-play .local-stats{padding-top:24px;margin-top:32px}
+.home-lobbies{min-width:0;align-self:stretch;border-left:1px solid var(--border);padding-left:clamp(24px,4vw,64px)}
+.home-lobbies .lobby-browser{padding:0;margin:0;border:0;background:transparent;box-shadow:none;border-radius:0}
+.home-lobbies .lobby-browser h2{font-size:22px}
+.home-lobbies .lobby-empty{padding-top:36px}
+.at-table main,.at-table main:has(.ability-control),.at-table main:has(.ability-test-picker){height:calc(100dvh - 84px);min-height:560px;padding:10px 24px 20px;overflow:visible}
+.at-table .round-toolbar{flex:none;min-height:40px;margin-bottom:6px;flex-direction:row;align-items:center}
+.at-table .round-toolbar h1{font-size:18px;margin:0}
+.at-table .round-toolbar .badge{display:block;border:0;color:var(--muted)}
+.game-layout{display:grid;grid-template-columns:clamp(180px,16vw,240px) minmax(0,1fr) clamp(180px,16vw,240px);gap:14px;flex:1;min-height:0}
+.ability-rail,.dossier-rail{position:relative;min-width:0;min-height:0;padding-top:10px;z-index:3}
+.ability-rail{overflow:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;padding-right:3px;padding-bottom:10px}
+.ability-rail:empty{visibility:hidden}
+.dossier-rail{text-align:right}
+.dossier-rail>#role-button{min-width:150px}
+.dossier-rail .notice{margin-left:auto;line-height:1.7}
+.dossier-rail .host-intel{position:relative}
+.dossier-rail .host-intel summary{list-style-position:inside}
+.dossier-rail .role-card{text-align:left}
+.ability-rail .ability-control{display:flex;flex-direction:column;align-items:stretch;gap:14px;width:100%;margin:0;padding:20px 16px}
+.ability-rail .ability-control>div:first-child{min-width:0;flex:none}
+.ability-rail .ability-heading{flex-wrap:wrap;gap:10px;font-size:16px}
+.ability-rail .ability-heading .badge{margin-left:40px;font-size:8px}
+.ability-rail .ability-description{margin:0;font-size:12px}
+.ability-rail .ability-control .btn{width:100%;font-size:12px;padding-inline:10px}
+.ability-rail .ability-letter{flex-wrap:wrap}
+.ability-rail .ability-targets{display:grid;grid-template-columns:1fr;width:100%}
+.ability-rail .ability-test-picker{margin:24px 0 0;width:100%}
+.ability-rail .ability-test-picker>div{grid-template-columns:1fr;gap:6px}
+.ability-rail .ability-test-picker .btn{justify-content:flex-start;padding-left:14px}
+.at-table .game-layout>.table-section{min-width:0;min-height:0;order:0;display:flex;flex-direction:column}
+.at-table .game-layout .table-wrap,.at-table main:has(.ability-control) .game-layout .table-wrap{container-type:size;min-height:0;height:auto;flex:1;width:100%;max-width:none;margin:0}
+.at-table .game-layout .table-ring{width:86%;height:78%;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%}
+.at-table .game-layout .table-center h2{font-size:clamp(17px,1.8vw,28px)}
+.at-table .game-layout .seat{width:90px}
+.at-table .game-layout .seat b{max-width:90px}
+.at-table .game-layout .actions{flex:none;gap:8px;margin:4px 0 0}
+.at-table .game-layout .actions .btn{font-size:12px;min-height:42px;padding:10px 15px}
+.at-table .game-layout .action-caption{flex:none;min-height:30px}
+.at-table .test-controls{padding:8px 12px;margin-bottom:7px;font-size:12px}
+
+/* Flat mode keeps the unopened cover intact and uses only 2D transforms. */
+body.flat-mode .dossier-stage,body.flat-mode .dossier-folder,body.flat-mode .coin-scene{perspective:none}
+body.flat-mode .dossier-folder.unsealed .dossier-cover{animation:flat-dossier-open .65s cubic-bezier(.2,.7,.3,1) both}
+body.flat-mode .coin-flight,body.flat-mode .gold-coin{transform-style:flat}
+body.flat-mode .gold-coin,body.flat-mode .gold-coin.landed{transform:rotate(0deg)}
+body.flat-mode .gold-coin.spinning{animation:flat-coin-spin .7s linear infinite}
+body.flat-mode .coin-edge{display:none}
+body.flat-mode .coin-face{transform:none;backface-visibility:visible;-webkit-backface-visibility:visible}
+body.flat-mode .coin-tails{display:none}
+body.flat-mode .gold-coin[data-side=tails] .coin-heads{display:none}
+body.flat-mode .gold-coin[data-side=tails] .coin-tails{display:grid}
+@keyframes flat-dossier-open{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-65px)}}
+@keyframes flat-coin-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@media(max-width:1100px) and (min-width:761px){
+ .game-layout{grid-template-columns:170px minmax(0,1fr) 170px;gap:8px}
+ .at-table main,.at-table main:has(.ability-control),.at-table main:has(.ability-test-picker){padding-inline:14px}
+ .ability-rail .ability-control{padding:15px 12px}
+ .at-table .game-layout .seat{width:72px}.at-table .game-layout .seat b{max-width:72px}
+ .at-table .game-layout .seat-avatar{width:40px;height:40px}
+ .at-table .game-layout .seat small{font-size:9px}
+}
+@media(max-width:760px){
+ .top{padding-inline:16px}.top-right{gap:10px}.connection{font-size:0}.connection:before{margin:0}
+ main:has(>.home){padding:12px;min-height:calc(100dvh - 68px)}
+ .home-surface{min-height:calc(100dvh - 92px);padding:26px 22px}
+ .home-heading{padding-bottom:24px}.home-heading h1{font-size:38px}
+ .home-columns{grid-template-columns:1fr;padding-top:28px;gap:34px}
+ .home-lobbies{border-left:0;border-top:1px solid var(--border);padding:28px 0 0}
+ .home-lobbies .lobby-empty{padding-top:8px}
+ .at-table main,.at-table main:has(.ability-control),.at-table main:has(.ability-test-picker){height:auto;min-height:calc(100dvh - 68px);padding:12px}
+ .game-layout{grid-template-columns:minmax(0,1fr) auto;gap:12px;flex:none}
+ .ability-rail{grid-column:1;grid-row:2;overflow:visible;padding:0}
+ .dossier-rail{grid-column:2;grid-row:2;padding:0;max-width:150px}
+ .dossier-rail>#role-button{min-width:0;font-size:11px;padding:10px}
+ .dossier-rail .notice{font-size:10px;padding:0}
+ .at-table .game-layout>.table-section{grid-column:1/-1;grid-row:1;min-height:450px;height:calc(75dvh - 68px)}
+ .at-table .game-layout .table-wrap,.at-table main:has(.ability-control) .game-layout .table-wrap{min-height:330px}
+ .at-table .game-layout .table-ring{width:76%;height:74%}
+ .at-table .game-layout .seat{width:65px}.at-table .game-layout .seat b{max-width:65px}
+ .at-table .game-layout .seat small{font-size:8px}.at-table .game-layout .seat-avatar{width:34px;height:34px}
+ .at-table .game-layout .actions .btn{min-width:100px;padding:9px;font-size:11px}
+ .ability-rail .ability-control{padding:16px 12px}.ability-rail .ability-test-picker>div{grid-template-columns:1fr 1fr}
+ .dossier-rail .host-intel summary{font-size:11px;padding:10px}
+}
+@media(prefers-reduced-motion:reduce){body.flat-mode .gold-coin.spinning{animation:none}body.flat-mode .dossier-folder.unsealed .dossier-cover{animation:none;display:none}}

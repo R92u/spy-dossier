@@ -43,7 +43,7 @@ function positionSpotlight(r){
  if(!seat||!table||lastSpotlightUI===id)return;
  lastSpotlightUI=id;closeDossier();
  if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
-  const bounds=table.getBoundingClientRect(),a=2*Math.PI*r.order.indexOf(id)/r.order.length-Math.PI/2,dx=.4*bounds.width*Math.cos(a),dy=.39*bounds.height*Math.sin(a);
+  const bounds=table.getBoundingClientRect(),{dx,dy}=seatOffset(r,r.order.indexOf(id),bounds);
   seat.animate([{transform:`translate(-50%,-50%) translate(${dx}px,${dy}px) scale(1)`},{transform:'translate(-50%,-50%) translate(0,0) scale(1.25)'}],{duration:550,easing:'cubic-bezier(.2,.7,.3,1)'});
  }
  seat.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
@@ -53,7 +53,7 @@ function positionAbilityWheel(r){
  const items=wheelItems(d.pool),winner=d.result?items.lastIndexOf(d.result):0,sector=360/items.length;
  // Masked clients receive no winning sector, including in angles or DOM attributes.
  const angle=2160+360-(winner+.5)*sector,duration=d.endsAt-d.startedAt-1000,elapsed=Math.max(0,Date.now()-d.startedAt);
- wheel.style.background='conic-gradient('+items.map((_,i)=>`${i%2?'#2c4030':'#b6a365'} ${i*sector}deg ${(i+1)*sector}deg`).join(',')+')';
+ wheel.style.background='conic-gradient('+items.map((_,i)=>`${i%2?'var(--wheel-sector-b,#2c4030)':'var(--wheel-sector-a,#b6a365)'} ${i*sector}deg ${(i+1)*sector}deg`).join(',')+')';
  wheel.style.setProperty('--wheel-angle',angle+'deg');wheel.style.animationDuration=duration+'ms';wheel.style.animationDelay=-elapsed+'ms';
  wheel.querySelectorAll('.wheel-label').forEach((label,i)=>{const a=(i+.5)*sector;label.style.transform=`translate(-50%,-50%) rotate(${a}deg) translateY(calc(var(--wheel-size)*-.32)) rotate(${-a}deg)`;});
  clearTimeout(wheelCaptionTimer);const reveal=()=>{const caption=document.querySelector('.wheel-caption');if(state.room?.abilityDraw?.id===d.id&&caption)caption.textContent=d.result?abilityNames[d.result]:'Способность засекречена';};
@@ -85,8 +85,8 @@ function syncAbilityEffects(r){
  if(!dialog.open||abilityCoinEvent===resultKey)return;
  abilityCoinEvent=resultKey;
  if(event.outcome){
-  const coin=dialog.querySelector('.gold-coin'),from=getComputedStyle(coin).transform,angle=event.outcome==='heads'?'0deg':'180deg';coin.classList.remove('spinning');coin.classList.add('landed');coin.style.setProperty('--coin-face-angle',angle);
-  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)coin.animate([{transform:from},{transform:`rotateY(${angle})`}],{duration:450,easing:'cubic-bezier(.2,.7,.3,1)'});
+  const coin=dialog.querySelector('.gold-coin'),from=getComputedStyle(coin).transform,angle=event.outcome==='heads'?'0deg':'180deg';coin.dataset.side=event.outcome;coin.classList.remove('spinning');coin.classList.add('landed');coin.style.setProperty('--coin-face-angle',angle);
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)coin.animate([{transform:from},{transform:document.body.classList.contains('flat-mode')?'rotate(0deg)':`rotateY(${angle})`}],{duration:450,easing:'cubic-bezier(.2,.7,.3,1)'});
   const letter=r.ability.letter;
   dialog.querySelector('.coin-result').innerHTML=`<h2>${event.outcome==='heads'?'Орёл':'Решка'}</h2>${letter?`<p>Первая буква слова</p><strong class="coin-letter">${esc(letter)}</strong>`:`<p>${event.outcome==='heads'?'Шпион получил первую букву.':'Бросок использован. Подсказки нет.'}</p>`}`;
   clearTimeout(coinCloseTimer);coinCloseTimer=setTimeout(closeAbilityCoin,letter?4000:2500);

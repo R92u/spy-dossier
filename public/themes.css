@@ -1,0 +1,235 @@
+/* Optional visual identities. These rules never change game visibility or turn state. */
+body[data-theme="studio"] {
+  color-scheme: light;
+  --bg: #f2f0e8;
+  --panel: #fffef9;
+  --border: #d9dcd9;
+  --text: #172b46;
+  --muted: #687482;
+  --red: #2759df;
+  --green: #2759df;
+  --font: "Segoe UI", Arial, sans-serif;
+  --theme-raised: #ffffff;
+  --theme-soft: #e9eefb;
+  --theme-hover: #e2e9f9;
+  --theme-ink-on-accent: #fff;
+  --theme-focus: #2759df33;
+  --theme-shadow: 0 8px 28px #172b4608;
+  --theme-overlay: #f2f0e8;
+  --theme-paper: #fffef8;
+  --theme-folder: #dce5fb;
+  --theme-paper-ink: #172b46;
+  --theme-paper-muted: #5d6b80;
+  --theme-paper-line: #172b4629;
+  --theme-portrait: #bdcdeb;
+  --wheel-sector-a: #2759df;
+  --wheel-sector-b: #162d56;
+  background-image: radial-gradient(#172b4615 .65px, transparent .65px);
+  background-size: 18px 18px;
+}
+
+body[data-theme="cosmos"] {
+  color-scheme: dark;
+  --bg: #030305;
+  --panel: #0b0b10e8;
+  --border: #ffffff24;
+  --text: #f5f5f8;
+  --muted: #a0a0ae;
+  --red: #f5f5f8;
+  --green: #e1e1eb;
+  --font: "Segoe UI", Arial, sans-serif;
+  --theme-raised: #131319;
+  --theme-soft: #ffffff0a;
+  --theme-hover: #ffffff12;
+  --theme-ink-on-accent: #09090c;
+  --theme-focus: #ffffff25;
+  --theme-shadow: 0 16px 50px #0005;
+  --theme-overlay: #050508f5;
+  --theme-paper: #e6e6eb;
+  --theme-folder: #c2c2ce;
+  --theme-paper-ink: #1a1a22;
+  --theme-paper-muted: #595968;
+  --theme-paper-line: #1a1a2230;
+  --theme-portrait: #a3a3b2;
+  --wheel-sector-a: #555563;
+  --wheel-sector-b: #191920;
+  background: var(--bg);
+  isolation: isolate;
+}
+
+#space-background {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+body[data-theme="cosmos"] > :is(.top, main, footer) { position: relative; z-index: 1; }
+body:not([data-theme="cosmos"]) #space-background { display: none; }
+
+/* Common components are recolored without changing their layout. */
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(h1, h2, h3) {
+  font-family: var(--font);
+  font-weight: 750;
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) .top { border-color: var(--border); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .brand-mark {
+  color: var(--theme-ink-on-accent);
+  background: var(--red);
+  border-color: var(--red);
+  border-radius: 10px;
+  transform: none;
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) .brand { letter-spacing: 1px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.panel, .role-card, .ability-control, .test-controls) {
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--border);
+  border-radius: 18px;
+  box-shadow: var(--theme-shadow);
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.btn, .settings-gear) {
+  color: var(--text);
+  background: var(--theme-soft);
+  border-color: var(--border);
+  border-radius: 10px;
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) .btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--theme-hover);
+  border-color: var(--muted);
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.btn.primary, .btn.selected, .btn[aria-pressed="true"]) {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--theme-ink-on-accent);
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) .btn.primary:hover:not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--theme-ink-on-accent);
+  filter: brightness(.93);
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) .btn.ghost { background: transparent; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .dossier-close { background: var(--theme-raised); color: var(--text); border-color: var(--border); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .dossier-close:hover { background: var(--theme-hover); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .test-controls strong { color: var(--text); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(input:not([type="checkbox"]):not([type="range"]), select) {
+  background: var(--theme-raised);
+  border-color: var(--border);
+  border-radius: 10px;
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(input, select):focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--theme-focus);
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) :focus-visible {
+  outline-color: var(--red);
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(label, .ability-description, .ability-letter, .ability-test-picker, .wheel-caption, .coin-result p, .ability-wheel-legend) { color: var(--muted); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.badge, .code-card) { color: var(--green); border-color: var(--border); border-radius: 7px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.avatar, .seat-avatar) { background: var(--theme-raised); color: var(--text); border-color: var(--border); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .avatar { border-radius: 12px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .switch-row input[type="checkbox"] { background: var(--border); border-color: var(--border); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .switch-row input[type="checkbox"]::before { background: var(--muted); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .switch-row input[type="checkbox"]:checked { background: var(--red); border-color: var(--red); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .switch-row input[type="checkbox"]:checked::before { background: var(--theme-ink-on-accent); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) input[type="range"] { accent-color: var(--red); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.profile-pairing, .discord-account, .ability-options) { background: var(--theme-soft); border-color: var(--border); border-radius: 12px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-choice { background: var(--theme-raised); border-color: var(--border); border-radius: 10px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-choice:has(input:checked) { background: var(--theme-soft); border-color: var(--red); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-choice strong { color: var(--text); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-choice input { accent-color: var(--red); }
+
+/* The central board and the two side rails share one visual language. */
+body:is([data-theme="studio"], [data-theme="cosmos"]) .table-ring {
+  border-color: var(--border);
+  background: var(--theme-soft);
+  box-shadow: 0 0 0 9px var(--bg), 0 0 0 10px var(--border), 0 20px 60px #0000000b;
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) .crosshair { border-color: var(--border); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .seat-avatar { box-shadow: 0 4px 12px #0000000a; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.seat.current, .seat.spotlight) .seat-avatar {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--theme-ink-on-accent);
+  box-shadow: 0 0 0 5px var(--theme-focus), 0 6px 25px var(--theme-focus);
+}
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.seat.current, .seat.spotlight) :is(b, small) { color: var(--text); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .seat-number { color: var(--muted); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.ability-heading, .ability-icon, .ability-letter strong, .secret-word) { color: var(--green); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.ability-icon, .ability-letter strong) { background: var(--theme-soft); border-color: var(--border); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-targets { border-color: var(--border); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .host-intel summary { background: var(--panel); border-color: var(--border); border-radius: 10px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .role-card { border-top-color: var(--green); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .role-card.spy { border-top-color: var(--red); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .answer { border-color: var(--border); border-radius: 12px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(#toast, #settings-toast) { background: var(--theme-raised); border-color: var(--border); color: var(--text); border-radius: 12px; box-shadow: var(--theme-shadow); }
+
+/* Full-screen scenes remain full-screen; only their presentation changes. */
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.round-overlay, .ability-wheel-screen, #ability-effect, .dossier) { background: var(--theme-overlay); color: var(--text); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(#ability-effect, .dossier)::backdrop { background: var(--theme-overlay); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .round-overlay .panel { border-color: var(--border); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .animated-input input::selection { background: var(--theme-focus); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.ability-wheel-screen > .eyebrow, .coin-dialog .eyebrow, .wheel-caption strong, .coin-result h2, .coin-result h3) { color: var(--text); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-wheel { border-color: var(--red); box-shadow: inset 0 0 0 2px #ffffff30, 0 12px 45px #0002; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-wheel-stage::before { border-color: var(--border); box-shadow: none; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-wheel-stage::after { border-color: #ffffff40; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-wheel-pointer { background: var(--red); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .wheel-label { color: #fff; text-shadow: 0 1px 3px #0006; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .wheel-hub { color: var(--text); background: var(--theme-raised); border-color: var(--red); box-shadow: 0 3px 16px #0002; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-wheel-legend span { border-color: var(--border); border-radius: 6px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .coin-letter { color: var(--green); background: var(--theme-soft); border-color: var(--border); border-radius: 12px; box-shadow: none; }
+/* The gold coin and yellow starting arrow retain their gameplay colors. */
+body:is([data-theme="studio"], [data-theme="cosmos"]) .ability-shuffle-overlay { background: #030305; color: #f5f5f8; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.shuffle-mark, .shuffle-mark > .shuffle-icon, .shuffle-mark > strong) { color: #f5f5f8; }
+
+/* Keep the physical folder and silhouette, with palette-specific materials. */
+body:is([data-theme="studio"], [data-theme="cosmos"]) .dossier-folder,
+body:is([data-theme="studio"], [data-theme="cosmos"]) .dossier-folder::before { background: var(--theme-folder); border-color: var(--theme-paper-line); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .dossier-paper { background: var(--theme-paper); color: var(--theme-paper-ink); box-shadow: 0 3px 12px #00000012; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .dossier-cover { background: var(--theme-folder); color: var(--theme-paper-ink); border-color: var(--theme-paper-line); box-shadow: inset 7px 0 #00000006; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.dossier-heading, .dossier-word span, .dossier-intel span) { color: var(--theme-paper-muted); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.dossier-heading, .dossier-intel) { border-color: var(--theme-paper-line); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.dossier-role, .dossier-paper.is-spy .dossier-role, .folder-stamp, .dossier-seal, .dossier-cover-title) { color: var(--theme-paper-ink); border-color: currentColor; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .folder-portrait { background: var(--theme-portrait); border-color: var(--theme-paper-line); border-radius: 5px; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.folder-portrait i, .folder-portrait b, .folder-lines i) { background: var(--theme-paper-ink); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .folder-portrait span { color: var(--theme-folder); }
+body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.folder-open.btn, .dossier-return.btn) { background: var(--theme-paper-ink); color: var(--theme-paper); border-color: var(--theme-paper-ink); }
+
+/* Studio: confident typography, soft paper and a crisp cobalt game board. */
+body[data-theme="studio"] .top { background: #f2f0e8ed; }
+body[data-theme="studio"] :is(h1, h2) { letter-spacing: -1.2px; }
+body[data-theme="studio"] .home-play h2 { font-size: clamp(32px, 4vw, 56px); }
+body[data-theme="studio"] .table-ring { background: radial-gradient(ellipse at center, #fffef8 0%, #edf1fd 100%); border: 2px solid #2759df45; }
+body[data-theme="studio"] .crosshair { border: 1px dashed #2759df30; }
+body[data-theme="studio"] .ability-control { border-top: 4px solid var(--red); }
+body[data-theme="studio"] .dossier-role { font-family: var(--font); letter-spacing: -.5px; transform: none; border-radius: 8px; }
+body[data-theme="studio"] .folder-stamp { color: #2759df; border-radius: 5px; }
+body[data-theme="studio"] .round-overlay .panel { box-shadow: 0 22px 90px #172b460d; }
+body[data-theme="studio"] #settings-dialog { box-shadow: 0 28px 100px #172b4626; border-radius: 20px; }
+body[data-theme="studio"] #settings-dialog::backdrop { background: #172b4659; }
+
+/* Cosmos: restrained monochrome surfaces leave the moving stars visible. */
+body[data-theme="cosmos"] .top { background: #03030580; }
+body[data-theme="cosmos"] .home-surface { background: #08080b75; }
+body:is([data-theme="studio"], [data-theme="cosmos"]) .home-lobbies .lobby-browser { background: transparent; box-shadow: none; border: 0; }
+body[data-theme="cosmos"] .brand-mark { background: transparent; color: var(--text); border-radius: 50%; }
+body[data-theme="cosmos"] :is(.panel, .role-card, .ability-control, .test-controls) { border-radius: 14px; }
+body[data-theme="cosmos"] .table-ring { background: radial-gradient(ellipse, #ffffff08, #08080c45 80%); border-color: #ffffff4a; box-shadow: 0 0 0 9px #ffffff02, 0 0 0 10px #ffffff12, inset 0 0 80px #ffffff03, 0 0 65px #ffffff04; }
+body[data-theme="cosmos"] .crosshair { border-color: #ffffff15; }
+body[data-theme="cosmos"] .seat-avatar { background: #101015; }
+body[data-theme="cosmos"] .seat.current .seat-avatar { background: #f5f5f8; color: #09090c; box-shadow: 0 0 0 5px #ffffff0d, 0 0 30px #ffffff20; }
+body[data-theme="cosmos"] .ability-control { box-shadow: inset 2px 0 #ffffff48; }
+body[data-theme="cosmos"] .dossier-folder { box-shadow: 0 30px 100px #0008, 0 0 70px #ffffff08; }
+body[data-theme="cosmos"] .folder-stamp { border-width: 1px; }
+body[data-theme="cosmos"] .round-overlay .panel { background: #0e0e14; }
+body[data-theme="cosmos"] .ability-wheel { box-shadow: inset 0 0 0 2px #ffffff25, 0 0 55px #ffffff0c; }
+body[data-theme="cosmos"] #settings-dialog { background: #0d0d13; }
+body[data-theme="cosmos"] #settings-dialog::backdrop { background: #000000b8; }
+
+@media (max-width: 600px) {
+  body:is([data-theme="studio"], [data-theme="cosmos"]) :is(.panel, .role-card, .ability-control) { border-radius: 13px; }
+  body[data-theme="studio"] .home-play h2 { font-size: 34px; }
+}
