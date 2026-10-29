@@ -12,7 +12,7 @@ class Profiles{
   const [payload,signature,...extra]=credential.split('.');if(extra.length||!payload||!equal(signature,this.sign(payload)))return null;
   try{const p=JSON.parse(Buffer.from(payload,'base64url').toString());return p.v===1&&typeof p.userId==='string'&&/^\d{15,22}$/.test(p.userId)&&typeof p.name==='string'&&p.name.length<=80?p:null;}catch{return null;}
  }
- restore(s,credential){this.editable(s);const account=this.read(credential);s.discord=account?{...account,credential}:null;return !!account;}
+ restore(s,credential){this.editable(s);const account=this.read(credential);s.discord=account?{...account,credential}:null;this.game.updateTestAccess(s);return !!account;}
  cancel(s){for(const [code,i]of this.invites)if(i.session===s.token)this.invites.delete(code);}
  invite(s){this.editable(s);this.game.need(this.available(),'Привязка профиля пока не настроена.');this.cancel(s);const code=randomBytes(16).toString('hex');this.invites.set(code,{session:s.token,expires:this.game.now()+600000});return code;}
  confirm(auth,d){
@@ -21,11 +21,10 @@ class Profiles{
   this.game.need(s&&invite.expires>this.game.now(),'Код профиля неверен или истёк. Получите новый на сайте.');this.editable(s);
   this.game.need(typeof d.userId==='string'&&/^\d{15,22}$/.test(d.userId),'Некорректный Discord ID.');
   const name=typeof d.name==='string'?d.name.trim().slice(0,80):'';this.game.need(name,'Не указано имя Discord.');
-  const credential=this.issue(d.userId,name);s.discord={...this.read(credential),credential};this.cancel(s);return {ok:true};
+  const credential=this.issue(d.userId,name);s.discord={...this.read(credential),credential};this.game.updateTestAccess(s);this.cancel(s);return {ok:true};
  }
- forget(s){this.editable(s);s.discord=null;this.cancel(s);}
+ forget(s){this.editable(s);s.discord=null;this.game.updateTestAccess(s);this.cancel(s);}
  view(s){const invite=[...this.invites].find(([,i])=>i.session===s.token&&i.expires>this.game.now());return {available:this.available(),name:s.discord?.name||'',credential:s.discord?.credential||'',code:invite?.[0]||''};}
  tick(){for(const [code,i]of this.invites)if(i.expires<=this.game.now()||!this.game.sessions.has(i.session))this.invites.delete(code);}
 }
 module.exports={Profiles};
-
