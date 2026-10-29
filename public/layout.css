@@ -96,3 +96,7 @@ body.flat-mode .gold-coin[data-side=tails] .coin-tails{display:grid}
  .dossier-rail .host-intel summary{font-size:11px;padding:10px}
 }
 @media(prefers-reduced-motion:reduce){body.flat-mode .gold-coin.spinning{animation:none}body.flat-mode .dossier-folder.unsealed .dossier-cover{animation:none;display:none}}
+
+/* Keep the action row in the layout while the server pauses a cinematic. */
+.at-table .game-layout .actions{min-height:42px}
+.at-table .game-layout .actions[aria-busy="true"] .btn:disabled{opacity:1;cursor:default}

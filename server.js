@@ -3,7 +3,19 @@ const http=require('node:http');const fs=require('node:fs');const path=require('
 function createApp(options={}){
  const game=new Game(options),streams=new Map(),rates=new Map();
  const send=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
- const broadcast=()=>{for(const [token,res] of streams){const s=game.sessions.get(token);if(s)res.write('data: '+JSON.stringify(game.view(s))+'\n\n');}};
+ const broadcast=()=>{scheduleTransition();for(const [token,res] of streams){const s=game.sessions.get(token);if(s)res.write('data: '+JSON.stringify(game.view(s))+'\n\n');}};
+ let transitionTimer,transitionAt=null,closing=false;
+ function scheduleTransition(){
+  if(closing)return;
+  const deadlines=[...game.rooms.values()].map(r=>r.phase==='ability-effect'?r.abilityEffect?.endsAt:r.phase==='shuffling'?r.abilityShuffle?.endsAt:r.phase==='selecting'?r.selectionEndsAt:null).filter(Number.isFinite);
+  const next=deadlines.length?Math.min(...deadlines):null;
+  if(next===transitionAt)return;
+  clearTimeout(transitionTimer);transitionAt=next;
+  if(next!==null){
+   transitionTimer=setTimeout(()=>{transitionAt=null;game.tick();broadcast();},Math.max(1,next-game.now()));
+   transitionTimer.unref();
+  }
+ }
  const server=http.createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
   const url=new URL(req.url,'http://localhost');
@@ -28,7 +40,7 @@ function createApp(options={}){
   res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript; charset=utf-8':file.endsWith('.css')?'text/css; charset=utf-8':file.endsWith('.png')?'image/png':'text/html; charset=utf-8');res.setHeader('Cache-Control','no-cache');fs.createReadStream(path.join(__dirname,'public',file)).pipe(res);
  });
  const tick=setInterval(()=>{game.tick();broadcast();for(const [key,r] of rates)if(Date.now()-r.start>60000)rates.delete(key);},1000);tick.unref();
- return {server,game,broadcast,close:()=>{clearInterval(tick);for(const res of streams.values())res.end();server.close();}};
+ return {server,game,broadcast,close:()=>{closing=true;clearInterval(tick);clearTimeout(transitionTimer);for(const res of streams.values())res.end();server.close();}};
 }
 if(require.main===module){const app=createApp();app.server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('Spy Dossier listening'));process.on('SIGTERM',()=>{app.close();setTimeout(()=>process.exit(0),1000).unref();});}
 module.exports={createApp};
