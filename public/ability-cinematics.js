@@ -26,7 +26,7 @@ function syncAbilityCinematic(r){
  const stage=layer.querySelector('.cinematic-stage');
  if(event.kind==='reverse'){
   layer.style.setProperty('--old-spin',(event.fromDirection*660)+'deg');
-  stage.innerHTML='<div class="reverse-orbit"><img class="reverse-snake" src="/reverse-snake.png" alt=""><img class="reverse-arrows" src="/reverse-arrows.png" alt=""></div>';
+  stage.innerHTML='<div class="reverse-orbit"><span class="reverse-snake"></span><span class="reverse-arrows"></span></div>';
  }else{
   const index=r.order.indexOf(event.targetId),seat=document.querySelector(`[data-seat="${index}"]`),offset=seatOffset(r,index,bounds);
   layer.style.setProperty('--speaker-x',offset.dx+'px');layer.style.setProperty('--speaker-y',offset.dy+'px');

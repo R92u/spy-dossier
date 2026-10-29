@@ -4,9 +4,9 @@
 body.cinematic-reverse #app,body.cinematic-spotlight #app{transform-origin:var(--camera-x) var(--camera-y);animation:cinematic-camera var(--cinematic-duration) cubic-bezier(.4,0,.2,1) both;animation-delay:calc(0ms - var(--cinematic-age));pointer-events:none;will-change:transform}
 body.cinematic-reverse #app{animation-name:reverse-camera}
 .reverse-orbit{position:absolute;width:var(--effect-size);height:var(--effect-size);left:calc(var(--effect-size)/-2);top:calc(var(--effect-size)/-2);animation:reverse-orbit var(--cinematic-duration) linear both;animation-delay:calc(0ms - var(--cinematic-age));mix-blend-mode:screen}
-.reverse-orbit img{position:absolute;display:block;filter:invert(1);mix-blend-mode:screen;user-select:none;pointer-events:none}
-.reverse-snake{inset:0;width:100%;height:100%;object-fit:contain}
-.reverse-arrows{width:48%;height:48%;left:26%;top:26%;object-fit:contain;animation:reverse-arrow-in var(--cinematic-duration) both;animation-delay:calc(0ms - var(--cinematic-age))}
+.reverse-orbit span{position:absolute;display:block;background:#fff;mask-image:linear-gradient(#fff 0 0),var(--drawing);mask-mode:alpha,luminance;mask-composite:exclude;mask-size:100% 100%,100% 100%;mask-repeat:no-repeat;user-select:none;pointer-events:none}
+.reverse-snake{--drawing:url("/reverse-snake.png");inset:0;width:100%;height:100%;object-fit:contain}
+.reverse-arrows{--drawing:url("/reverse-arrows.png");width:48%;height:48%;left:26%;top:26%;object-fit:contain;animation:reverse-arrow-in var(--cinematic-duration) both;animation-delay:calc(0ms - var(--cinematic-age))}
 body.cinematic-spotlight .seat.spotlight{visibility:hidden}
 .cinematic-layer .cinematic-speaker{position:absolute!important;left:0;top:0;visibility:visible!important;z-index:2;animation:speaker-arrival var(--cinematic-duration) cubic-bezier(.25,.7,.2,1) both;animation-delay:calc(0ms - var(--cinematic-age));transition:none;min-width:120px}
 .cinematic-speaker .seat-avatar{width:70px;height:70px;font-size:26px;margin:auto}.cinematic-speaker .seat-number,.cinematic-speaker small{display:none}.cinematic-speaker b{display:block;margin-top:12px;text-align:center}
