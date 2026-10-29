@@ -1,0 +1,160 @@
+'use strict';
+const {randomBytes,randomInt}=require('node:crypto');
+const IDS=['coin','silence','vowels','probe','shuffle','reverse','spotlight'];
+const ACTIVE=['reveal','selecting','playing','voting','guessing'];
+const segmenter=new Intl.Segmenter('ru',{granularity:'grapheme'});
+const normalizeLetter=value=>value.normalize('NFKC').toLocaleLowerCase('ru').replace(/ё/g,'е');
+class Abilities{
+ constructor(game){this.game=game;this.random=randomInt;}
+ settings(r){return r.abilitySettings||{enabled:false,wheel:true,censored:false,pool:['coin']};}
+ discordReady(r){
+  const host=this.game.voice.session(r.hostId);
+  return !!this.game.profiles.read(host?.discord?.credential)&&this.game.voice.settings(r).enabled;
+ }
+ needsDiscord(r){const settings=this.settings(r);return settings.enabled&&settings.pool.includes('silence');}
+ configure(r,d){
+  this.game.need(['enabled','wheel','censored'].every(key=>typeof d[key]==='boolean'),'Некорректные настройки способностей.');
+  this.game.need(Array.isArray(d.pool)&&d.pool.length<=IDS.length&&d.pool.every(id=>IDS.includes(id))&&new Set(d.pool).size===d.pool.length,'Некорректный список способностей.');
+  this.game.need(!d.enabled||d.pool.length>0,'Включите хотя бы одну способность.');
+  this.game.need(!d.enabled||!d.pool.includes('silence')||this.discordReady(r),'Для «Радиомолчания» привяжите Discord-профиль ведущего и включите управление микрофонами.');
+  r.abilitySettings={enabled:d.enabled,wheel:d.wheel,censored:d.censored,pool:[...d.pool]};
+ }
+ ready(r){
+  const settings=this.settings(r);if(!settings.enabled)return;
+  this.game.need(settings.pool.length>0,'Включите хотя бы одну способность.');
+  this.game.need(!this.needsDiscord(r)||this.discordReady(r),'Для «Радиомолчания» нужен привязанный Discord и управление микрофонами.');
+ }
+ begin(r){
+  this.clear(r);r.turnSerial=1;
+  const settings=this.settings(r);if(!settings.enabled)return;
+  const id=settings.pool[this.random(settings.pool.length)];
+  r.abilityState=this.fresh(id);
+  if(settings.wheel){const startedAt=this.game.now();r.phase='ability-draw';r.abilityDraw={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+5000,pool:[...settings.pool],result:id,censored:settings.censored};}
+ }
+ fresh(id){return {id,used:false,letter:null,coin:null,feedback:null};}
+ clear(r){r.abilityState=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;r.turnQueue=null;r.turnAnchor=null;r.turnOrderSignature=null;r.cycleSpoken=[];}
+ finish(r){r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;if(r.abilityState)r.abilityState.coin=null;}
+ test(r,s,id){
+  this.game.need(r.testMode&&r.hostId===s.id&&this.game.canTest(s),'Выбор способности доступен только в одиночном тесте.');
+  this.game.need(r.phase==='playing'&&!r.spotlight,'Дождитесь завершения дополнительного хода или анимации.');
+  this.game.need(IDS.includes(id),'Неизвестная способность.');
+  if(id==='silence'){this.game.need(this.discordReady(r),'Для «Радиомолчания» нужен Discord.');this.game.voice.ready(r);}
+  r.silence=null;r.abilityState=this.fresh(id);
+ }
+ cycleOrder(r,anchor){
+  const live=new Set(this.game.alive(r).map(p=>p.id)),index=Math.max(0,r.order.indexOf(anchor));
+  return [...r.order.slice(index),...r.order.slice(0,index)].filter(id=>live.has(id));
+ }
+ shuffledSeats(r){
+  const living=this.game.alive(r).map(p=>p.id),live=new Set(living);
+  const original=[...new Set([...r.order.filter(id=>live.has(id)),...living])];
+  if(original.length<2)return original;
+  // Every living player moves. Bound retries, then use a nonzero rotation.
+  for(let attempt=0;attempt<20;attempt++){
+   const candidate=[...original];
+   for(let i=candidate.length-1;i>0;i--){const j=this.random(i+1);[candidate[i],candidate[j]]=[candidate[j],candidate[i]];}
+   if(candidate.every((id,i)=>id!==original[i]))return candidate;
+  }
+  const shift=1+this.random(original.length-1);
+  return [...original.slice(shift),...original.slice(0,shift)];
+ }
+ ensureTurns(r){
+  const signature=r.order.join(',');
+  if(!r.turnQueue||r.turnOrderSignature!==signature){
+   r.turnAnchor=r.current;r.turnOrderSignature=signature;r.cycleSpoken=[r.current];
+   r.turnQueue=this.cycleOrder(r,r.current).filter(id=>id!==r.current);
+  }
+ }
+ next(r){
+  this.prune(r);
+  if(r.spotlight){
+   const returnTo=r.spotlight.returnTo;r.spotlight=null;
+   if(this.game.alive(r).some(p=>p.id===returnTo)){r.current=returnTo;r.turnSerial=(r.turnSerial||1)+1;this.prune(r);return;}
+  }
+  this.ensureTurns(r);
+  const live=new Set(this.game.alive(r).map(p=>p.id));if(!live.size)return;
+  // A skip consumes that seat's normal turn; spotlight never consumes this queue.
+  for(let n=0;n<r.order.length*2+1;n++){
+   if(!r.turnQueue.length){r.cycle++;r.cycleSpoken=[];r.turnQueue=this.cycleOrder(r,r.turnAnchor);}
+   const id=r.turnQueue.shift();if(!live.has(id))continue;r.cycleSpoken.push(id);
+   if(r.silence?.pending&&r.silence.targetId===id){r.silence.pending=false;r.silence.untilTurn=(r.turnSerial||1)+1;continue;}
+   r.current=id;r.turnSerial=(r.turnSerial||1)+1;this.prune(r);return;
+  }
+ }
+ prune(r){
+  if(!r.silence)return;
+  if(!this.game.alive(r).some(p=>p.id===r.silence.targetId)||(!r.silence.pending&&r.turnSerial>r.silence.untilTurn))r.silence=null;
+ }
+ canUse(r,s){
+  const ability=r.abilityState,p=r.players.find(p=>p.id===s.id);
+  if(!ability||ability.used||s.id!==r.spyId||!p?.alive||!ACTIVE.includes(r.phase))return false;
+  if(ability.id==='silence')return r.phase==='playing'&&this.discordReady(r);
+  if(['shuffle','reverse','spotlight'].includes(ability.id))return r.phase==='playing'&&!r.spotlight;
+  return true;
+ }
+ use(r,s,d){
+  this.game.need(this.canUse(r,s),'Способность сейчас недоступна.');
+  const ability=r.abilityState;
+  if(ability.id==='coin'){
+   const startedAt=this.game.now();ability.used=true;
+   ability.coin={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+2400,outcome:this.random(2)===0?'heads':'tails'};
+   return;
+  }
+  if(ability.id==='vowels'){
+   const count=(normalizeLetter(r.word).match(/[аеёиоуыэюяaeiou]/gu)||[]).length;
+   ability.feedback={vowels:count>=3?'3+':String(count)};ability.used=true;return;
+  }
+  if(ability.id==='probe'){
+   const letter=typeof d.letter==='string'?normalizeLetter(d.letter.trim()):'';
+   this.game.need(/^[а-яa-z]$/u.test(letter),'Введите одну русскую или латинскую букву.');
+   ability.feedback={probe:{letter,present:normalizeLetter(r.word).includes(letter)}};ability.used=true;return;
+  }
+  if(ability.id==='shuffle'){
+   const order=this.shuffledSeats(r);
+   const startedAt=this.game.now();r.order=order;r.current=order[this.random(order.length)];r.cycle++;r.turnSerial=(r.turnSerial||1)+1;
+   r.turnQueue=null;this.ensureTurns(r);r.phase='shuffling';
+   r.abilityShuffle={id:randomBytes(12).toString('hex'),startedAt,blackoutEndsAt:startedAt+1200,endsAt:startedAt+5700};
+   ability.used=true;return;
+  }
+  if(ability.id==='reverse'){
+   this.ensureTurns(r);const live=new Set(this.game.alive(r).map(p=>p.id));
+   r.turnQueue=r.turnQueue.filter(id=>live.has(id)).reverse();ability.used=true;return;
+  }
+  if(ability.id==='spotlight'){
+   const target=this.game.alive(r).find(p=>p.id===d.targetId);
+   this.game.need(target&&target.id!==r.current,'Выберите другого живого игрока для дополнительного хода.');
+   this.ensureTurns(r);r.spotlight={targetId:target.id,returnTo:r.current};r.current=target.id;r.turnSerial=(r.turnSerial||1)+1;
+   ability.used=true;return;
+  }
+  this.game.voice.ready(r);
+  const target=this.game.alive(r).find(p=>p.id===d.targetId);
+  this.game.need(target,'Выберите живого игрока за столом.');
+  ability.used=true;
+  r.silence={targetId:target.id,pending:target.id!==r.current,untilTurn:target.id===r.current?r.turnSerial+1:null};
+  if(target.id===r.current)this.game.next(r);
+ }
+ tick(r){
+  this.prune(r);
+  if(r.phase==='ability-draw'&&r.abilityDraw?.endsAt<=this.game.now()){r.abilityDraw=null;r.phase='reveal';}
+  if(r.phase==='shuffling'&&r.abilityShuffle?.endsAt<=this.game.now()){r.abilityShuffle=null;r.phase='playing';}
+  const ability=r.abilityState;
+  if(ACTIVE.includes(r.phase)&&ability?.coin?.outcome==='heads'&&ability.coin.endsAt<=this.game.now()&&!ability.letter){
+   ability.letter=[...segmenter.segment(r.word)][0]?.segment||'';
+  }
+ }
+ view(r,s){
+  const settings=this.settings(r),spy=s.id===r.spyId,assigned=r.abilityState;
+  const publicAssignment=settings.wheel&&!settings.censored;
+  const visibleCoin=assigned?.coin&&(spy||!settings.censored)?assigned.coin:null;
+  const coin=visibleCoin?{id:visibleCoin.id,startedAt:visibleCoin.startedAt,endsAt:visibleCoin.endsAt,outcome:visibleCoin.endsAt<=this.game.now()?visibleCoin.outcome:null}:null;
+  const draw=r.phase==='ability-draw'?r.abilityDraw:null;
+  return {
+   abilities:{...settings,pool:[...settings.pool],discordReady:this.discordReady(r)},
+   ability:assigned?{id:spy||publicAssignment?assigned.id:null,used:spy||publicAssignment?assigned.used:false,letter:spy?assigned.letter:null,feedback:spy?assigned.feedback:null,coin,silence:r.silence?{targetId:r.silence.targetId,pending:r.silence.pending}:null,canUse:this.canUse(r,s)}:null,
+   abilityDraw:draw?{id:draw.id,startedAt:draw.startedAt,endsAt:draw.endsAt,pool:[...draw.pool],result:spy||!draw.censored?draw.result:null,censored:draw.censored}:null,
+   abilityShuffle:r.abilityShuffle?{...r.abilityShuffle}:null,
+   spotlight:r.spotlight?{...r.spotlight}:null
+  };
+ }
+}
+module.exports={Abilities};
