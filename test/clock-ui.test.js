@@ -67,7 +67,7 @@ test('clock-only heartbeats update time without changing the render state signat
  const start=appSource.indexOf('function acceptState(next){'),end=appSource.indexOf('\nfunction home()',start);
  assert.ok(start>=0&&end>start);
  let monotonic=0;
- const context=vm.createContext({performance:{now:()=>monotonic},syncSettings(){}});
+ const context=vm.createContext({performance:{now:()=>monotonic},syncSettings(){},syncLobbySettings(){}});
  vm.runInContext(clockSource+'\nlet state={},discordCredential="";\n'+appSource.slice(start,end),context);
  context.acceptState({serverTime:5000,me:'player',room:null,discord:{},lobbies:[]});
  const first=vm.runInContext('JSON.stringify(state)',context);
