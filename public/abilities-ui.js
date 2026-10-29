@@ -45,17 +45,6 @@ function positionAbilityShuffle(r){
   document.body.append(veil);lastShuffleUI=d.id;window.scrollTo({top:0,left:0,behavior:'instant'});
  }
 }
-function positionSpotlight(r){
- const id=r?.spotlight?.targetId;if(!id){lastSpotlightUI='';return;}
- const seat=document.querySelector('.seat.spotlight'),table=document.querySelector('.table-wrap');
- if(!seat||!table||lastSpotlightUI===id)return;
- lastSpotlightUI=id;closeDossier();
- if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
-  const bounds=table.getBoundingClientRect(),{dx,dy}=seatOffset(r,r.order.indexOf(id),bounds);
-  seat.animate([{transform:`translate(-50%,-50%) translate(${dx}px,${dy}px) scale(1)`},{transform:'translate(-50%,-50%) translate(0,0) scale(1.25)'}],{duration:550,easing:'cubic-bezier(.2,.7,.3,1)'});
- }
- seat.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
-}
 function positionAbilityWheel(r){
  const d=r?.abilityDraw,wheel=document.querySelector('.ability-wheel');if(!d||!wheel)return;
  const items=wheelItems(d.pool),winner=d.result?items.lastIndexOf(d.result):0,sector=360/items.length;
@@ -75,7 +64,8 @@ function syncAbilityEffects(r){
  const slot=$('dossier').querySelector('.dossier-ability');if(slot){const markup=abilityControl(r,'dossier');if(slot.innerHTML!==markup)slot.innerHTML=markup;}
  positionAbilityWheel(r);
  positionAbilityShuffle(r);
- positionSpotlight(r);
+ syncAbilityCinematic(r);
+ if(r?.abilityEffect){closeAbilityCoin();return;}
  const event=r?.ability?.coin;
  if(!event||['waiting','ended'].includes(r.phase)){closeAbilityCoin();if(!event){abilityCoinSeen='';abilityCoinEvent=null;}return;}
  let dialog=$('ability-effect');

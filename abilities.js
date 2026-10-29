@@ -34,8 +34,8 @@ class Abilities{
   if(settings.wheel){const startedAt=this.game.now();r.phase='ability-draw';r.abilityDraw={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+5000,pool:[...settings.pool],result:id,censored:settings.censored};}
  }
  fresh(id){return {id,used:false,letter:null,coin:null,feedback:null};}
- clear(r){r.spyAbilities=null;r.publicAbilityCoin=null;r.abilityState=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;r.turnQueue=null;r.turnAnchor=null;r.turnOrderSignature=null;r.cycleSpoken=[];}
- finish(r){r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;for(const ability of this.states(r))ability.coin=null;r.publicAbilityCoin=null;}
+ clear(r){r.abilityEffect=null;r.turnDirection=1;r.spyAbilities=null;r.publicAbilityCoin=null;r.abilityState=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;r.turnQueue=null;r.turnAnchor=null;r.turnOrderSignature=null;r.cycleSpoken=[];}
+ finish(r){r.abilityEffect=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;for(const ability of this.states(r))ability.coin=null;r.publicAbilityCoin=null;}
  test(r,s,id){
   this.game.need(r.testMode&&r.hostId===s.id&&this.game.canTest(s),'Выбор способности доступен только в одиночном тесте.');
   this.game.need(r.phase==='playing'&&!r.spotlight,'Дождитесь завершения дополнительного хода или анимации.');
@@ -68,6 +68,7 @@ class Abilities{
   }
  }
  next(r){
+  if(r.abilityEffect?.kind==='spotlight'){r.abilityEffect=null;if(r.phase==='ability-effect')r.phase='playing';}
   this.prune(r);
   if(r.spotlight){
    const returnTo=r.spotlight.returnTo;r.spotlight=null;
@@ -77,7 +78,7 @@ class Abilities{
   const live=new Set(this.game.alive(r).map(p=>p.id));if(!live.size)return;
   // A skip consumes that seat's normal turn; spotlight never consumes this queue.
   for(let n=0;n<r.order.length*2+1;n++){
-   if(!r.turnQueue.length){r.cycle++;r.cycleSpoken=[];r.turnQueue=this.cycleOrder(r,r.turnAnchor);}
+   if(!r.turnQueue.length){r.turnDirection=1;r.cycle++;r.cycleSpoken=[];r.turnQueue=this.cycleOrder(r,r.turnAnchor);}
    const id=r.turnQueue.shift();if(!live.has(id))continue;r.cycleSpoken.push(id);
    if(r.silence?.pending&&r.silence.targetId===id){r.silence.pending=false;r.silence.untilTurn=(r.turnSerial||1)+1;continue;}
    r.current=id;r.turnSerial=(r.turnSerial||1)+1;this.prune(r);return;
@@ -115,19 +116,19 @@ class Abilities{
   if(ability.id==='shuffle'){
    const order=this.shuffledSeats(r);
    const startedAt=this.game.now();r.order=order;r.current=order[this.random(order.length)];r.cycle++;r.turnSerial=(r.turnSerial||1)+1;
-   r.turnQueue=null;this.ensureTurns(r);r.phase='shuffling';
+   r.turnDirection=1;r.turnQueue=null;this.ensureTurns(r);r.phase='shuffling';
    r.abilityShuffle={id:randomBytes(12).toString('hex'),startedAt,blackoutEndsAt:startedAt+1200,endsAt:startedAt+5700};
    ability.used=true;return;
   }
   if(ability.id==='reverse'){
    this.ensureTurns(r);const live=new Set(this.game.alive(r).map(p=>p.id));
-   r.turnQueue=r.turnQueue.filter(id=>live.has(id)).reverse();ability.used=true;return;
+   r.turnQueue=r.turnQueue.filter(id=>live.has(id)).reverse();const fromDirection=r.turnDirection||1;r.turnDirection=-fromDirection;this.effect(r,'reverse',5700,{fromDirection});ability.used=true;return;
   }
   if(ability.id==='spotlight'){
    const target=this.game.alive(r).find(p=>p.id===d.targetId);
    this.game.need(target&&target.id!==r.current,'Выберите другого живого игрока для дополнительного хода.');
    this.ensureTurns(r);r.spotlight={targetId:target.id,returnTo:r.current};r.current=target.id;r.turnSerial=(r.turnSerial||1)+1;
-   ability.used=true;return;
+   this.effect(r,'spotlight',7000,{targetId:target.id});ability.used=true;return;
   }
   this.game.voice.ready(r);
   const target=this.game.alive(r).find(p=>p.id===d.targetId);
@@ -136,8 +137,10 @@ class Abilities{
   r.silence={targetId:target.id,pending:target.id!==r.current,untilTurn:target.id===r.current?r.turnSerial+1:null};
   if(target.id===r.current)this.game.next(r);
  }
+ effect(r,kind,duration,extra={}){const startedAt=this.game.now();r.abilityEffect={id:randomBytes(12).toString('hex'),kind,startedAt,endsAt:startedAt+duration,...extra};r.phase='ability-effect';}
  tick(r){
   this.prune(r);
+  if(r.phase==='ability-effect'&&r.abilityEffect?.endsAt<=this.game.now()){r.abilityEffect=null;r.phase='playing';}
   if(r.phase==='ability-draw'&&r.abilityDraw?.endsAt<=this.game.now()){r.abilityDraw=null;r.phase='reveal';}
   if(r.phase==='shuffling'&&r.abilityShuffle?.endsAt<=this.game.now()){r.abilityShuffle=null;r.phase='playing';}
   for(const ability of this.states(r)){
@@ -155,6 +158,7 @@ class Abilities{
    abilities:{...settings,pool:[...settings.pool],discordReady:this.discordReady(r)},
    ability:assigned?{id:spy||publicAssignment?assigned.id:null,used:spy||publicAssignment?assigned.used:false,letter:spy?assigned.letter:null,feedback:spy?assigned.feedback:null,coin,silence:r.silence?{targetId:r.silence.targetId,pending:r.silence.pending}:null,canUse:this.canUse(r,s)}:null,
    abilityDraw:draw?{id:draw.id,startedAt:draw.startedAt,endsAt:draw.endsAt,pool:[...draw.pool],result:spy?own?.id||null:!multi&&!draw.censored?draw.result:null,censored:draw.censored}:null,
+   abilityEffect:r.abilityEffect?{...r.abilityEffect}:null,
    abilityShuffle:r.abilityShuffle?{...r.abilityShuffle}:null,
    spotlight:r.spotlight?{...r.spotlight}:null
   };

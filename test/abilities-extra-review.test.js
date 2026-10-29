@@ -16,16 +16,16 @@ function normal(id,count=6){
  while(g.dealTo(r))g.act(players.find(s=>s.id===g.dealTo(r)),'ready');
  now+=4500;g.tick();
  const next=()=>{g.act(host,'next');return r.current;};
- return {g,r,host,players,spy,next};
+ return {g,r,host,players,spy,next,advance:ms=>{now+=ms;g.tick();}};
 }
 function clockwise(r){const start=r.order.indexOf(r.current);return [...r.order.slice(start),...r.order.slice(0,start)];}
 
 test('reverse preserves a complete remaining cycle regardless of random starting seat',()=>{
  // Repeated randomly seated games exercise both sides of the array boundary.
  for(let attempt=0;attempt<12;attempt++){
-  const {g,r,spy,next}=normal('reverse'),ring=clockwise(r),cycle=r.cycle;
+  const {g,r,spy,next,advance}=normal('reverse'),ring=clockwise(r),cycle=r.cycle;
   assert.equal(next(),ring[1]);
-  g.act(spy,'abilityUse');
+  g.act(spy,'abilityUse');advance(5700);
   const remaining=ring.slice(2).reverse(),actual=[];
   for(const id of remaining){actual.push(next());assert.equal(r.current,id);assert.equal(r.cycle,cycle);}
   assert.equal(new Set([ring[0],ring[1],...actual]).size,ring.length);
@@ -35,8 +35,8 @@ test('reverse preserves a complete remaining cycle regardless of random starting
 });
 
 test('a departed player in the reversed remainder does not repeat or skip another living turn',()=>{
- const {g,r,players,spy,next}=normal('reverse'),ring=clockwise(r),cycle=r.cycle;
- assert.equal(next(),ring[1]);g.act(spy,'abilityUse');
+ const {g,r,players,spy,next,advance}=normal('reverse'),ring=clockwise(r),cycle=r.cycle;
+ assert.equal(next(),ring[1]);g.act(spy,'abilityUse');advance(5700);
  const departing=ring.slice(2).find(id=>id!==spy.id);
  g.act(players.find(s=>s.id===departing),'leave');
  for(const id of ring.slice(2).reverse().filter(id=>id!==departing)){assert.equal(next(),id);assert.equal(r.cycle,cycle);}
@@ -45,10 +45,10 @@ test('a departed player in the reversed remainder does not repeat or skip anothe
 });
 
 test('a voted-out extra speaker returns to the interrupted turn without consuming the normal queue',()=>{
- const {g,r,host,players,spy,next}=normal('spotlight');
+ const {g,r,host,players,spy,next,advance}=normal('spotlight');
  const ring=clockwise(r);next();next();
  const interrupted=r.current,cycle=r.cycle,target=ring.slice(0,2).find(id=>id!==spy.id);
- g.act(spy,'abilityUse',{targetId:target});assert.equal(r.current,target);
+ g.act(spy,'abilityUse',{targetId:target});advance(7000);assert.equal(r.current,target);
  g.act(players.find(s=>s.id!==target),'voteStart');
  players.slice(0,4).forEach(s=>g.act(s,'vote',{targetId:target}));g.resolve(r);
  assert.equal(r.phase,'playing');assert.equal(r.current,interrupted);assert.equal(r.spotlight,null);
@@ -66,9 +66,9 @@ test('solo ability switching keeps a reversed queue intact across a temporary ex
  const token=g.voice.connect({code:g.voice.invite(r,s),guildId:'100000000000000002',channelId:'100000000000000003',channelName:'Review',userId}).token;
  const poll=()=>g.voice.poll(token,{roster:[userId]});poll();g.act(s,'start',{});g.act(s,'ready');now+=4500;g.tick();poll();
  const ring=clockwise(r),next=()=>{g.act(s,'next');return r.current;};
- assert.equal(next(),ring[1]);g.act(s,'testAbility',{id:'reverse'});g.act(s,'abilityUse');
+ assert.equal(next(),ring[1]);g.act(s,'testAbility',{id:'reverse'});g.act(s,'abilityUse');now+=5700;g.tick();poll();
  const remaining=ring.slice(2).reverse(),cycle=r.cycle;
- g.act(s,'testAbility',{id:'spotlight'});g.act(s,'abilityUse',{targetId:ring[0]});
+ g.act(s,'testAbility',{id:'spotlight'});g.act(s,'abilityUse',{targetId:ring[0]});now+=7000;g.tick();poll();
  assert.equal(r.current,ring[0]);assert.throws(()=>g.act(s,'testAbility',{id:'coin'}));
  assert.equal(next(),ring[1]);assert.equal(r.cycle,cycle);
  for(const id of remaining)assert.equal(next(),id);

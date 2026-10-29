@@ -135,9 +135,9 @@ test('probe validates exactly one alphabetic letter and normalizes case and ё w
  }
 });
 test('reverse changes only remaining turns and restores the canonical order for the next cycle',()=>{
- const {g,r,host,players,configure,start,ready}=setup();configure({pool:['reverse'],wheel:false});start();ready();
+ const {g,r,host,players,configure,start,ready,advance}=setup();configure({pool:['reverse'],wheel:false});start();ready();
  r.order=players.map(s=>s.id);r.current=players[0].id;g.act(host,'next');assert.equal(r.current,players[1].id);
- g.act(players[0],'abilityUse');const seen=[];
+ g.act(players[0],'abilityUse');advance(5700);const seen=[];
  for(let i=0;i<3;i++){g.act(host,'next');seen.push(r.current);}
  assert.deepEqual(seen,[players[4].id,players[3].id,players[2].id]);assert.equal(r.cycle,1);
  g.act(host,'next');assert.equal(r.current,players[0].id);assert.equal(r.cycle,2);
@@ -169,21 +169,21 @@ test('shuffle moves every living seat even when random candidates repeatedly ret
  }
 });
 test('spotlight grants a true extra turn and resumes the interrupted player without consuming either normal turn',()=>{
- const {g,r,host,players,configure,start,ready}=setup();configure({pool:['spotlight'],wheel:false});start();ready();
+ const {g,r,host,players,configure,start,ready,advance}=setup();configure({pool:['spotlight'],wheel:false});start();ready();
  r.order=players.map(s=>s.id);r.current=players[1].id;
  assert.throws(()=>g.act(players[0],'abilityUse',{targetId:r.current}));assert.throws(()=>g.act(players[0],'abilityUse',{targetId:host.id}));
  g.act(players[0],'abilityUse',{targetId:players[0].id});assert.equal(r.current,players[0].id);assert.equal(r.cycle,1);
  assert.deepEqual(g.view(players[2]).room.spotlight,{targetId:players[0].id,returnTo:players[1].id});
- g.act(players[0],'next');assert.equal(r.current,players[1].id);assert.equal(r.spotlight,null);
+ advance(7000);g.act(players[0],'next');assert.equal(r.current,players[1].id);assert.equal(r.spotlight,null);
  const normal=[];for(let i=0;i<4;i++){g.act(host,'next');normal.push(r.current);}
  assert.deepEqual(normal,[players[2].id,players[3].id,players[4].id,players[0].id]);assert.equal(r.cycle,1);
 });
 test('spotlight handles departure of the extra speaker and death of the interrupted player',()=>{
  for(const leaving of ['target','return']){
-  const {g,r,host,players,configure,start,ready}=setup(6);configure({pool:['spotlight'],wheel:false});start();ready();
+  const {g,r,host,players,configure,start,ready,advance}=setup(6);configure({pool:['spotlight'],wheel:false});start();ready();
   r.order=players.map(s=>s.id);r.current=players[1].id;g.act(players[0],'abilityUse',{targetId:players[4].id});
   if(leaving==='target'){g.act(players[4],'leave');assert.equal(r.current,players[1].id);assert.equal(r.spotlight,null);}
-  else{g.act(players[1],'leave');assert.equal(r.current,players[4].id);g.act(host,'next');assert.equal(r.current,players[2].id);assert.equal(r.spotlight,null);}
+  else{g.act(players[1],'leave');assert.equal(r.current,players[4].id);advance(7000);g.act(host,'next');assert.equal(r.current,players[2].id);assert.equal(r.spotlight,null);}
  }
 });
 test('testAbility is restricted to verified solo ownership and safely refreshes every ability',()=>{
@@ -194,7 +194,7 @@ test('testAbility is restricted to verified solo ownership and safely refreshes 
  const token=g.voice.connect({code:g.voice.invite(r,s),guildId:'200000000000000001',channelId:'200000000000000002',userId}).token;
  const poll=()=>g.voice.poll(token,{roster:[userId]});poll();g.act(s,'start',{});assert.throws(()=>g.act(s,'testAbility',{id:'coin'}));g.act(s,'ready');now+=4500;g.tick();poll();
  for(const id of ['coin','silence','vowels','probe','shuffle','reverse','spotlight']){g.act(s,'testAbility',{id});assert.equal(r.abilityState.id,id);assert.equal(r.abilityState.used,false);}
- g.act(s,'abilityUse',{targetId:r.players.find(p=>p.simulated).id});assert.throws(()=>g.act(s,'testAbility',{id:'coin'}));g.act(s,'next');
+ g.act(s,'abilityUse',{targetId:r.players.find(p=>p.simulated).id});assert.throws(()=>g.act(s,'testAbility',{id:'coin'}));now+=7000;g.tick();poll();g.act(s,'next');
  g.act(s,'testAbility',{id:'silence'});g.act(s,'abilityUse',{targetId:s.id});assert.ok(r.silence);g.act(s,'testAbility',{id:'probe'});assert.equal(r.silence,null);
  g.act(s,'abilityUse',{letter:'м'});g.act(s,'testAbility',{id:'probe'});assert.equal(r.abilityState.used,false);assert.equal(r.abilityState.feedback,null);
  assert.throws(()=>g.act(s,'testAbility',{id:'invented'}));g.act(s,'testAbility',{id:'shuffle'});g.act(s,'abilityUse');assert.throws(()=>g.act(s,'testAbility',{id:'coin'}));
