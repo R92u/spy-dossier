@@ -6,6 +6,8 @@ const segmenter=new Intl.Segmenter('ru',{granularity:'grapheme'});
 const normalizeLetter=value=>value.normalize('NFKC').toLocaleLowerCase('ru').replace(/ё/g,'е');
 class Abilities{
  constructor(game){this.game=game;this.random=randomInt;}
+ state(r,s){return r.spyAbilities?.[s.id]||(s.id===r.spyId?r.abilityState:null);}
+ states(r){return r.spyAbilities?Object.values(r.spyAbilities):r.abilityState?[r.abilityState]:[];}
  settings(r){return r.abilitySettings||{enabled:false,wheel:true,censored:false,pool:['coin']};}
  discordReady(r){
   const host=this.game.voice.session(r.hostId);
@@ -26,20 +28,20 @@ class Abilities{
  }
  begin(r){
   this.clear(r);r.turnSerial=1;
-  const settings=this.settings(r);if(!settings.enabled)return;
-  const id=settings.pool[this.random(settings.pool.length)];
-  r.abilityState=this.fresh(id);
+  const settings=this.settings(r);if(!settings.enabled||this.game.experiments.cooperative(r))return;
+  const ids=(r.spyIds||[r.spyId]).filter(Boolean);r.spyAbilities=Object.fromEntries(ids.map(id=>[id,this.fresh(settings.pool[this.random(settings.pool.length)])]));
+  r.abilityState=r.spyAbilities[r.spyId];const id=r.abilityState.id;
   if(settings.wheel){const startedAt=this.game.now();r.phase='ability-draw';r.abilityDraw={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+5000,pool:[...settings.pool],result:id,censored:settings.censored};}
  }
  fresh(id){return {id,used:false,letter:null,coin:null,feedback:null};}
- clear(r){r.abilityState=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;r.turnQueue=null;r.turnAnchor=null;r.turnOrderSignature=null;r.cycleSpoken=[];}
- finish(r){r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;if(r.abilityState)r.abilityState.coin=null;}
+ clear(r){r.spyAbilities=null;r.publicAbilityCoin=null;r.abilityState=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;r.turnQueue=null;r.turnAnchor=null;r.turnOrderSignature=null;r.cycleSpoken=[];}
+ finish(r){r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;for(const ability of this.states(r))ability.coin=null;r.publicAbilityCoin=null;}
  test(r,s,id){
   this.game.need(r.testMode&&r.hostId===s.id&&this.game.canTest(s),'Выбор способности доступен только в одиночном тесте.');
   this.game.need(r.phase==='playing'&&!r.spotlight,'Дождитесь завершения дополнительного хода или анимации.');
   this.game.need(IDS.includes(id),'Неизвестная способность.');
   if(id==='silence'){this.game.need(this.discordReady(r),'Для «Радиомолчания» нужен Discord.');this.game.voice.ready(r);}
-  r.silence=null;r.abilityState=this.fresh(id);
+  r.silence=null;r.publicAbilityCoin=null;r.abilityState=this.fresh(id);r.spyAbilities={[s.id]:r.abilityState};
  }
  cycleOrder(r,anchor){
   const live=new Set(this.game.alive(r).map(p=>p.id)),index=Math.max(0,r.order.indexOf(anchor));
@@ -86,18 +88,19 @@ class Abilities{
   if(!this.game.alive(r).some(p=>p.id===r.silence.targetId)||(!r.silence.pending&&r.turnSerial>r.silence.untilTurn))r.silence=null;
  }
  canUse(r,s){
-  const ability=r.abilityState,p=r.players.find(p=>p.id===s.id);
-  if(!ability||ability.used||s.id!==r.spyId||!p?.alive||!ACTIVE.includes(r.phase))return false;
-  if(ability.id==='silence')return r.phase==='playing'&&this.discordReady(r);
+  const ability=this.state(r,s),p=r.players.find(p=>p.id===s.id);
+  if(!ability||ability.used||!this.game.isSpy(r,s.id)||this.game.experiments.cooperative(r)||!p?.alive||!ACTIVE.includes(r.phase))return false;
+  if(ability.id==='silence')return r.phase==='playing'&&!r.silence&&!r.spotlight&&this.discordReady(r);
+  if(ability.id==='spotlight'&&(r.silence||r.micInterrupted))return false;
   if(['shuffle','reverse','spotlight'].includes(ability.id))return r.phase==='playing'&&!r.spotlight;
   return true;
  }
  use(r,s,d){
   this.game.need(this.canUse(r,s),'Способность сейчас недоступна.');
-  const ability=r.abilityState;
+  const ability=this.state(r,s);
   if(ability.id==='coin'){
    const startedAt=this.game.now();ability.used=true;
-   ability.coin={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+2400,outcome:this.random(2)===0?'heads':'tails'};
+   ability.coin={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+2400,outcome:this.random(2)===0?'heads':'tails'};r.publicAbilityCoin=ability.coin;
    return;
   }
   if(ability.id==='vowels'){
@@ -137,21 +140,21 @@ class Abilities{
   this.prune(r);
   if(r.phase==='ability-draw'&&r.abilityDraw?.endsAt<=this.game.now()){r.abilityDraw=null;r.phase='reveal';}
   if(r.phase==='shuffling'&&r.abilityShuffle?.endsAt<=this.game.now()){r.abilityShuffle=null;r.phase='playing';}
-  const ability=r.abilityState;
+  for(const ability of this.states(r)){
   if(ACTIVE.includes(r.phase)&&ability?.coin?.outcome==='heads'&&ability.coin.endsAt<=this.game.now()&&!ability.letter){
    ability.letter=[...segmenter.segment(r.word)][0]?.segment||'';
-  }
+  }}
  }
  view(r,s){
-  const settings=this.settings(r),spy=s.id===r.spyId,assigned=r.abilityState;
-  const publicAssignment=settings.wheel&&!settings.censored;
-  const visibleCoin=assigned?.coin&&(spy||!settings.censored)?assigned.coin:null;
+  const settings=this.settings(r),spy=this.game.isSpy(r,s.id),own=this.state(r,s),assigned=spy?own:r.abilityState,multi=(r.spyIds?.length||1)>1;
+  const publicAssignment=settings.wheel&&!settings.censored&&!multi;
+  const visibleCoin=spy&&own?.coin?own.coin:!settings.censored?(r.publicAbilityCoin||r.abilityState?.coin):null;
   const coin=visibleCoin?{id:visibleCoin.id,startedAt:visibleCoin.startedAt,endsAt:visibleCoin.endsAt,outcome:visibleCoin.endsAt<=this.game.now()?visibleCoin.outcome:null}:null;
   const draw=r.phase==='ability-draw'?r.abilityDraw:null;
   return {
    abilities:{...settings,pool:[...settings.pool],discordReady:this.discordReady(r)},
    ability:assigned?{id:spy||publicAssignment?assigned.id:null,used:spy||publicAssignment?assigned.used:false,letter:spy?assigned.letter:null,feedback:spy?assigned.feedback:null,coin,silence:r.silence?{targetId:r.silence.targetId,pending:r.silence.pending}:null,canUse:this.canUse(r,s)}:null,
-   abilityDraw:draw?{id:draw.id,startedAt:draw.startedAt,endsAt:draw.endsAt,pool:[...draw.pool],result:spy||!draw.censored?draw.result:null,censored:draw.censored}:null,
+   abilityDraw:draw?{id:draw.id,startedAt:draw.startedAt,endsAt:draw.endsAt,pool:[...draw.pool],result:spy?own?.id||null:!multi&&!draw.censored?draw.result:null,censored:draw.censored}:null,
    abilityShuffle:r.abilityShuffle?{...r.abilityShuffle}:null,
    spotlight:r.spotlight?{...r.spotlight}:null
   };

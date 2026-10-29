@@ -6,7 +6,7 @@ class VoiceBridge{
  constructor(game){this.game=game;this.links=new Map();this.invites=new Map();}
  settings(r){return r.voiceSettings||{enabled:false,radius:0};}
  configure(r,d){this.game.need(typeof d.enabled==='boolean'&&Number.isInteger(d.radius)&&d.radius>=0&&d.radius<=6,'Некорректные настройки голоса.');r.voiceSettings={enabled:d.enabled,radius:d.radius};}
- invite(r,s){this.game.need(this.settings(r).enabled,'Включите экспериментальную игру.');for(const [code,i]of this.invites)if(i.playerId===s.id||i.expires<this.game.now())this.invites.delete(code);const code=secret();this.invites.set(code,{room:r.code,playerId:s.id,host:r.hostId===s.id,expires:this.game.now()+600000});return code;}
+ invite(r,s){this.game.need(this.settings(r).enabled,'Включите управление микрофонами Discord.');for(const [code,i]of this.invites)if(i.playerId===s.id||i.expires<this.game.now())this.invites.delete(code);const code=secret();this.invites.set(code,{room:r.code,playerId:s.id,host:r.hostId===s.id,expires:this.game.now()+600000});return code;}
  consume(code,host){const i=this.invites.get(code);this.game.need(i&&i.host===host&&i.expires>this.game.now(),'Код привязки неверен или истёк.');const r=this.game.rooms.get(i.room);this.game.need(r&&r.phase==='waiting'&&r.players.some(p=>p.id===i.playerId)&&this.settings(r).enabled,'Лобби недоступно для привязки.');return {i,r};}
  session(id){return [...this.game.sessions.values()].find(s=>s.id===id);}
  syncProfiles(r,l){
@@ -36,7 +36,7 @@ class VoiceBridge{
   if(index>=0)for(let offset=-settings.radius;offset<=settings.radius;offset++){
    const id=seats[(index+offset+seats.length*10)%seats.length];
    // Keep the seat in the neighbour ring: silence must not expand whisper range.
-   if(id===muted)continue;
+   if(id===muted||this.game.experiments.muted(r,id))continue;
    const user=l.members.get(id);if(user)allowed.add(user);
   }
   return {mode:'turn',allowed:[...allowed]};

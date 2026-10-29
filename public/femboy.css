@@ -1,0 +1,126 @@
+/* Secret local appearance: soft pink, ink-plum text and the supplied character. */
+body[data-theme="femboy"] {
+  color-scheme: light;
+  --bg: #fbeaf1;
+  --panel: #fff8fc;
+  --border: #e7c6d6;
+  --text: #493142;
+  --muted: #806577;
+  --red: #a13b6c;
+  --green: #a13b6c;
+  --font: "Segoe UI", Arial, sans-serif;
+  --pink-raised: #fffafd;
+  --pink-soft: #f8e2ee;
+  --pink-hover: #f3d5e6;
+  --pink-focus: #c769982c;
+  --pink-shadow: 0 10px 32px #a13b6c0a;
+  --pink-paper: #fff9fc;
+  --pink-folder: #efcada;
+  --wheel-sector-a: #a94377;
+  --wheel-sector-b: #653c62;
+  background: radial-gradient(ellipse at 12% 2%, #fff6fb 0, transparent 48%), radial-gradient(ellipse at 95% 90%, #f4d8e8 0, transparent 45%), var(--bg);
+}
+
+body[data-theme="femboy"] .top { background: #fbeaf1de; border-color: var(--border); }
+body[data-theme="femboy"] .brand { letter-spacing: 1.5px; }
+body[data-theme="femboy"] .brand-mark { color: #fff8fc; background: var(--red); border-color: var(--red); border-radius: 12px; transform: rotate(-4deg); }
+body[data-theme="femboy"] :is(h1, h2, h3) { color: var(--text); font-family: var(--font); font-weight: 750; }
+body[data-theme="femboy"] :is(h1, h2) { letter-spacing: -.8px; }
+body[data-theme="femboy"] :is(.panel, .role-card, .ability-control, .test-controls) { color: var(--text); background: var(--panel); border-color: var(--border); border-radius: 20px; box-shadow: var(--pink-shadow); }
+body[data-theme="femboy"] :is(.btn, .dossier-close) { color: var(--text); background: var(--pink-soft); border-color: var(--border); border-radius: 12px; }
+body[data-theme="femboy"] .btn:hover:not(:disabled), body[data-theme="femboy"] .dossier-close:hover { color: var(--text); background: var(--pink-hover); border-color: #c98ba9; }
+body[data-theme="femboy"] :is(.btn.primary, .btn.selected, .btn[aria-pressed="true"]) { color: #fff8fc; background: var(--red); border-color: var(--red); }
+body[data-theme="femboy"] .btn.primary:hover:not(:disabled) { color: #fff8fc; background: #8e315e; border-color: #8e315e; }
+body[data-theme="femboy"] .btn.ghost { background: transparent; }
+body[data-theme="femboy"] :is(input:not([type="checkbox"]):not([type="range"]), select) { background: var(--pink-raised); border-color: var(--border); border-radius: 12px; }
+body[data-theme="femboy"] :is(input, select):focus { border-color: var(--red); box-shadow: 0 0 0 3px var(--pink-focus); }
+body[data-theme="femboy"] :focus-visible { outline-color: var(--red); }
+body[data-theme="femboy"] :is(label, .ability-description, .ability-letter, .ability-test-picker, .wheel-caption, .coin-result p, .ability-wheel-legend) { color: var(--muted); }
+body[data-theme="femboy"] :is(.badge, .code-card) { color: var(--green); border-color: #dba8c2; border-radius: 8px; }
+body[data-theme="femboy"] .avatar { color: var(--red); background: var(--pink-soft); border-radius: 13px; }
+body[data-theme="femboy"] :is(.test-controls strong, .ability-choice strong) { color: var(--text); }
+body[data-theme="femboy"] .switch-row input[type="checkbox"] { background: #ead0df; border-color: #dfb9ce; }
+body[data-theme="femboy"] .switch-row input[type="checkbox"]::before { background: #a77b94; }
+body[data-theme="femboy"] .switch-row input[type="checkbox"]:checked { background: var(--red); border-color: var(--red); }
+body[data-theme="femboy"] .switch-row input[type="checkbox"]:checked::before { background: #fff8fc; }
+body[data-theme="femboy"] input[type="range"] { accent-color: var(--red); }
+body[data-theme="femboy"] :is(.profile-pairing, .discord-account, .ability-options) { background: var(--pink-soft); border-color: var(--border); border-radius: 14px; }
+body[data-theme="femboy"] .ability-choice { background: var(--pink-raised); border-color: var(--border); border-radius: 12px; }
+body[data-theme="femboy"] .ability-choice:hover { border-color: #c98ba9; }
+body[data-theme="femboy"] .ability-choice:has(input:checked) { background: var(--pink-soft); border-color: var(--red); }
+body[data-theme="femboy"] .ability-choice input { accent-color: var(--red); }
+body[data-theme="femboy"] .home-heading { position: relative; min-height: 116px; padding-right: 145px; }
+body[data-theme="femboy"] .home-heading::after { content: ''; position: absolute; right: 5px; top: 0; width: 118px; height: 92px; border: 1px solid var(--border); border-radius: 23px; background: #f4d9e7 url('/femboy-character.png') center 43% / cover no-repeat; background-blend-mode: multiply; transform: rotate(5deg); box-shadow: 0 6px 0 #ebc6da70; pointer-events: none; }
+
+/* Visible names below the portraits and their text nodes stay unchanged. */
+body[data-theme="femboy"] .seat-avatar,
+body[data-theme="femboy"] .seat.current .seat-avatar,
+body[data-theme="femboy"] .seat.spotlight .seat-avatar,
+body[data-theme="femboy"] .roster-row .avatar {
+  color: transparent;
+  font-size: 0;
+  background: #f8e4ee url('/femboy-character.png') center 43% / cover no-repeat;
+  background-blend-mode: multiply;
+  border: 2px solid #dfabc4;
+  box-shadow: 0 4px 10px #a13b6c0b;
+}
+body[data-theme="femboy"] :is(.seat.current, .seat.spotlight) .seat-avatar { border-color: var(--red); box-shadow: 0 0 0 5px var(--pink-focus), 0 5px 25px #a13b6c26; }
+body[data-theme="femboy"] :is(.seat.current, .seat.spotlight) :is(b, small) { color: var(--red); }
+body[data-theme="femboy"] .seat-number { color: var(--muted); }
+body[data-theme="femboy"] .table-ring { background: radial-gradient(ellipse, #fff8fc 0%, #f5dce9 100%); border: 2px solid #ce93af; box-shadow: 0 0 0 9px #fbeaf1, 0 0 0 10px #e3bbd0, 0 20px 60px #a13b6c0d; }
+body[data-theme="femboy"] .crosshair { border-color: #ce93af66; }
+body[data-theme="femboy"] .table-center .eyebrow { color: var(--muted); }
+body[data-theme="femboy"] .ability-control { box-shadow: inset 3px 0 #c777a0, var(--pink-shadow); }
+body[data-theme="femboy"] :is(.ability-heading, .ability-icon, .ability-letter strong, .secret-word) { color: var(--green); }
+body[data-theme="femboy"] :is(.ability-icon, .ability-letter strong) { background: var(--pink-soft); border-color: #dba8c2; }
+body[data-theme="femboy"] .ability-targets { border-color: var(--border); }
+body[data-theme="femboy"] .host-intel summary { background: var(--panel); border-color: var(--border); border-radius: 12px; }
+body[data-theme="femboy"] :is(.role-card, .role-card.spy) { border-top-color: var(--red); }
+body[data-theme="femboy"] .answer { border-color: #dba8c2; border-radius: 14px; }
+body[data-theme="femboy"] .toast { color: var(--text); background: var(--pink-raised); border-color: var(--border); border-radius: 14px; box-shadow: 0 8px 35px #a13b6c20; }
+
+/* Scene colors do not alter open/closed state, timing or private content. */
+body[data-theme="femboy"] :is(.round-overlay, .ability-wheel-screen, #ability-effect, .dossier) { color: var(--text); background: radial-gradient(ellipse at 50% 35%, #fff8fc, #f7dfea); }
+body[data-theme="femboy"] :is(#ability-effect, .dossier)::backdrop { background: #f7dfeaf5; }
+body[data-theme="femboy"] .round-overlay .panel { border-color: var(--border); box-shadow: 0 24px 80px #a13b6c0c; }
+body[data-theme="femboy"] .animated-input input::selection { background: var(--pink-focus); }
+body[data-theme="femboy"] :is(.ability-wheel-screen > .eyebrow, .coin-dialog .eyebrow, .wheel-caption strong, .coin-result h2, .coin-result h3) { color: var(--red); }
+body[data-theme="femboy"] .ability-wheel { border-color: #c77b9e; box-shadow: inset 0 0 0 2px #fff5fc80, 0 15px 45px #a13b6c20; }
+body[data-theme="femboy"] .ability-wheel-stage::before { border-color: #dba8c2; box-shadow: none; }
+body[data-theme="femboy"] .ability-wheel-stage::after { border-color: #fff8fc55; }
+body[data-theme="femboy"] .ability-wheel-pointer { background: var(--red); }
+body[data-theme="femboy"] .wheel-label { color: #fff8fc; text-shadow: 0 1px 3px #49314255; }
+body[data-theme="femboy"] .wheel-hub { color: var(--red); background: var(--pink-raised); border-color: #dba8c2; box-shadow: 0 3px 16px #49314220; }
+body[data-theme="femboy"] .ability-wheel-legend span { border-color: var(--border); border-radius: 8px; }
+body[data-theme="femboy"] .coin-letter { color: var(--red); background: var(--pink-soft); border-color: #dba8c2; border-radius: 14px; box-shadow: none; }
+/* Blackout must stay opaque; the gold coin and yellow arrow keep their colors. */
+body[data-theme="femboy"] .ability-shuffle-overlay { background: #030305; color: #f8eff5; }
+body[data-theme="femboy"] :is(.shuffle-mark, .shuffle-mark > .shuffle-icon, .shuffle-mark > strong) { color: #f8eff5; }
+
+body[data-theme="femboy"] .dossier-folder,
+body[data-theme="femboy"] .dossier-folder::before { background: var(--pink-folder); border-color: #d9a7bf; }
+body[data-theme="femboy"] .dossier-folder { box-shadow: 0 30px 100px #81355726; }
+body[data-theme="femboy"] .dossier-paper { color: var(--text); background: var(--pink-paper); box-shadow: 0 3px 12px #49314212; }
+body[data-theme="femboy"] .dossier-cover { color: var(--text); background: var(--pink-folder); border-color: #d9a7bf; box-shadow: inset 7px 0 #a13b6c08; }
+body[data-theme="femboy"] :is(.dossier-heading, .dossier-word span, .dossier-intel span) { color: var(--muted); }
+body[data-theme="femboy"] :is(.dossier-heading, .dossier-intel) { border-color: var(--border); }
+body[data-theme="femboy"] :is(.dossier-role, .dossier-paper.is-spy .dossier-role, .folder-stamp, .dossier-seal, .dossier-cover-title) { color: #963a65; border-color: currentColor; }
+body[data-theme="femboy"] .dossier-role { border-radius: 8px; }
+body[data-theme="femboy"] .folder-stamp { border-radius: 4px; }
+body[data-theme="femboy"] .folder-portrait { background: #dcb1c7; border-color: #c595ae; border-radius: 8px; }
+body[data-theme="femboy"] :is(.folder-portrait i, .folder-portrait b, .folder-lines i) { background: #765367; }
+body[data-theme="femboy"] .folder-portrait span { color: var(--pink-folder); }
+body[data-theme="femboy"] :is(.folder-open.btn, .dossier-return.btn) { color: #fff8fc; background: #963a65; border-color: #963a65; }
+body[data-theme="femboy"] :is(.folder-open.btn, .dossier-return.btn):hover { color: #fff8fc; background: #813357; border-color: #813357; }
+
+body[data-theme="femboy"] #open-settings { background: var(--panel); color: var(--red); border-color: var(--border); }
+body[data-theme="femboy"] #settings-dialog { color: var(--text); background: var(--panel); border-color: var(--border); border-radius: 22px; box-shadow: 0 28px 100px #81355726; }
+body[data-theme="femboy"] #settings-dialog::backdrop { background: #6c3a5659; }
+body[data-theme="femboy"] :is(.setting-design-wrap, .settings-profile-note) { background: var(--pink-soft); border-color: var(--border); border-radius: 12px; }
+body[data-theme="femboy"] .settings-footer { background: #f9e7f0; border-color: var(--border); }
+
+@media (max-width: 600px) {
+  body[data-theme="femboy"] :is(.panel, .role-card, .ability-control) { border-radius: 15px; }
+  body[data-theme="femboy"] .home-heading { min-height: 94px; padding-right: 95px; }
+  body[data-theme="femboy"] .home-heading::after { width: 78px; height: 67px; top: 0; right: 0; border-radius: 17px; }
+}

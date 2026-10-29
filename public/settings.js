@@ -1,15 +1,16 @@
 'use strict';
-const uiPreferences={disable3d:false,experimentalDesign:false,design:'studio'};
+const uiPreferences={disable3d:false,experimentalDesign:false,design:'studio',femboyUnlocked:false};
 const uiPreferenceKey='dossier-ui-settings';
 function readUiPreferences(raw){
  try{
   const value=JSON.parse(raw||'null');
   if(!value||typeof value!=='object'||Array.isArray(value))return null;
-  return {disable3d:value.disable3d===true,experimentalDesign:value.experimentalDesign===true,design:value.design==='cosmos'?'cosmos':'studio'};
+  const femboyUnlocked=value.femboyUnlocked===true;
+  return {disable3d:value.disable3d===true,experimentalDesign:value.experimentalDesign===true,design:value.design==='cosmos'?'cosmos':value.design==='femboy'&&femboyUnlocked?'femboy':'studio',femboyUnlocked};
  }catch{return null;}
 }
 try{Object.assign(uiPreferences,readUiPreferences(localStorage.getItem(uiPreferenceKey))||{});}catch{}
-let settingsProfileSignature='',settingsDialogReady=false;
+let settingsProfileSignature='',settingsDialogReady=false,settingsDesignStreak=0;
 function applyAppearance(){
  document.body.dataset.theme=uiPreferences.experimentalDesign?uiPreferences.design:'base';
  document.body.classList.toggle('flat-mode',uiPreferences.disable3d);
@@ -30,16 +31,25 @@ function ensureSettingsDialog(){
   if(event.target===dialog||event.target.closest('[data-settings-close]'))dialog.close();
  });
  dialog.addEventListener('close',()=>{
+  settingsDesignStreak=0;
   document.body.classList.remove('settings-open');
   const gear=document.getElementById('open-settings');
   if(gear&&!gear.closest('[inert]'))gear.focus({preventScroll:true});
  });
  dialog.addEventListener('change',event=>{
+  let unlocked=false;
+  if(event.target.id!=='setting-experimental')settingsDesignStreak=0;
   if(event.target.id==='setting-disable3d')uiPreferences.disable3d=event.target.checked;
-  else if(event.target.id==='setting-experimental')uiPreferences.experimentalDesign=event.target.checked;
-  else if(event.target.id==='setting-design')uiPreferences.design=event.target.value==='cosmos'?'cosmos':'studio';
+  else if(event.target.id==='setting-experimental'){
+   uiPreferences.experimentalDesign=event.target.checked;
+   if(!uiPreferences.femboyUnlocked&&++settingsDesignStreak===5){
+    uiPreferences.femboyUnlocked=true;uiPreferences.experimentalDesign=true;uiPreferences.design='femboy';unlocked=true;settingsDesignStreak=0;
+   }
+  }
+  else if(event.target.id==='setting-design')uiPreferences.design=event.target.value==='cosmos'?'cosmos':event.target.value==='femboy'&&uiPreferences.femboyUnlocked?'femboy':'studio';
   else return;
   persistUiPreferences();applyAppearance();syncAppearanceControls();
+  if(unlocked&&typeof toast==='function')toast('Секретный дизайн открыт ✦');
  });
  syncAppearanceControls();
  return dialog;
@@ -48,7 +58,12 @@ function syncAppearanceControls(){
  const flat=document.getElementById('setting-disable3d'),experimental=document.getElementById('setting-experimental'),select=document.getElementById('setting-design'),wrap=document.getElementById('setting-design-wrap');
  if(flat)flat.checked=uiPreferences.disable3d;
  if(experimental)experimental.checked=uiPreferences.experimentalDesign;
- if(select)select.value=uiPreferences.design;
+ if(select){
+  const secret=select.querySelector('option[value="femboy"]');
+  if(uiPreferences.femboyUnlocked&&!secret){const option=document.createElement('option');option.value='femboy';option.textContent='Femboy — секретный дизайн';select.append(option);}
+  else if(!uiPreferences.femboyUnlocked&&secret)secret.remove();
+  select.value=uiPreferences.design;
+ }
  if(wrap)wrap.hidden=!uiPreferences.experimentalDesign;
 }
 function syncSettings(){
@@ -70,7 +85,8 @@ document.addEventListener('click',event=>{
 });
 window.addEventListener('storage',event=>{
  if(event.key!==uiPreferenceKey)return;
- Object.assign(uiPreferences,readUiPreferences(event.newValue)||{disable3d:false,experimentalDesign:false,design:'studio'});
+ settingsDesignStreak=0;
+ Object.assign(uiPreferences,readUiPreferences(event.newValue)||{disable3d:false,experimentalDesign:false,design:'studio',femboyUnlocked:false});
  applyAppearance();syncAppearanceControls();
 });
 applyAppearance();
