@@ -39,7 +39,7 @@ function positionAbilityShuffle(r){
   veil.innerHTML='<div class="shuffle-shutter shuffle-shutter-top"></div><div class="shuffle-shutter shuffle-shutter-bottom"></div><div class="shuffle-mark"><span>⇄</span></div>';
   // Seed the offset once: changing a negative delay on a running CSS animation would
   // count elapsed time twice. These nodes survive every game-content rerender.
-  const elapsed=Math.max(0,Date.now()-d.startedAt),coverTime=Math.max(1,d.blackoutEndsAt-d.startedAt);
+  const elapsed=Math.max(0,gameTime()-d.startedAt),coverTime=Math.max(1,d.blackoutEndsAt-d.startedAt);
   document.body.style.setProperty('--shuffle-age',elapsed+'ms');
   document.body.style.setProperty('--shuffle-cover-time',coverTime+'ms');
   document.body.append(veil);lastShuffleUI=d.id;window.scrollTo({top:0,left:0,behavior:'instant'});
@@ -60,7 +60,7 @@ function positionAbilityWheel(r){
  const d=r?.abilityDraw,wheel=document.querySelector('.ability-wheel');if(!d||!wheel)return;
  const items=wheelItems(d.pool),winner=d.result?items.lastIndexOf(d.result):0,sector=360/items.length;
  // Masked clients receive no winning sector, including in angles or DOM attributes.
- const angle=2160+360-(winner+.5)*sector,duration=d.endsAt-d.startedAt-1000,elapsed=Math.max(0,Date.now()-d.startedAt);
+ const angle=2160+360-(winner+.5)*sector,duration=d.endsAt-d.startedAt-1000,elapsed=Math.max(0,gameTime()-d.startedAt);
  wheel.style.background='conic-gradient('+items.map((_,i)=>`${i%2?'var(--wheel-sector-b,#2c4030)':'var(--wheel-sector-a,#b6a365)'} ${i*sector}deg ${(i+1)*sector}deg`).join(',')+')';
  wheel.style.setProperty('--wheel-angle',angle+'deg');wheel.style.animationDuration=duration+'ms';wheel.style.animationDelay=-elapsed+'ms';
  wheel.querySelectorAll('.wheel-label').forEach((label,i)=>{const a=(i+.5)*sector;label.style.transform=`translate(-50%,-50%) rotate(${a}deg) translateY(calc(var(--wheel-size)*-.32)) rotate(${-a}deg)`;});
@@ -83,9 +83,9 @@ function syncAbilityEffects(r){
  if(abilityCoinSeen!==event.id){
   abilityCoinSeen=event.id;abilityCoinEvent=null;
   // A reconnect should show a result once, but never replay a past throw.
-  if(Date.now()>event.endsAt+5000)return;
+  if(gameTime()>event.endsAt+5000)return;
   dialog.innerHTML=coinMarkup();dialog.showModal();
-  const elapsed=Math.max(0,Date.now()-event.startedAt);
+  const elapsed=Math.max(0,gameTime()-event.startedAt);
   dialog.querySelector('.coin-flight').style.animationDelay=-elapsed+'ms';
   dialog.querySelector('.gold-coin').style.animationDelay=-elapsed+'ms';
  }

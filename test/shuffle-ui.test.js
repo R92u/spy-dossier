@@ -9,7 +9,7 @@ const source=fs.readFileSync(path.join(__dirname,'../public/abilities-ui.js'),'u
 
 // Only the DOM operations used by the shuffle portal are modeled. CSS animation
 // playback remains a browser concern; these tests protect its lifetime and clock.
-function harness(now=1000){
+function harness(now=1000,wallTime=now+7200000){
  class Element {
   constructor(tagName){
    this.tagName=tagName;this.children=[];this.parentNode=null;this.id='';
@@ -29,7 +29,7 @@ function harness(now=1000){
  const find=(node,id)=>node.id===id?node:node.children.map(child=>find(child,id)).find(Boolean)||null;
  const document={body,createElement:tag=>new Element(tag),getElementById:id=>find(body,id),addEventListener(){}};
  const scrolls=[];
- const context=vm.createContext({document,window:{scrollTo:options=>scrolls.push(options)},Date:{now:()=>now}});
+ const context=vm.createContext({document,window:{scrollTo:options=>scrolls.push(options)},gameTime:()=>now,Date:{now:()=>wallTime}});
  vm.runInContext(source,context,{filename:'abilities-ui.js'});
  return {
   body,app,document,scrolls,
@@ -72,6 +72,14 @@ test('joining during or after the blackout seeks the existing server timeline',(
   assert.ok(ui.effect());
   ui.now(1000+elapsed+200);ui.sync(shuffling());
   assert.equal(ui.style('--shuffle-age'),elapsed+'ms','late arrival must not replay or accelerate on its next update');
+ }
+});
+
+test('device-clock skew cannot make a new shuffle skip its blackout',()=>{
+ for(const skew of [-7200000,2000,7200000]){
+  const ui=harness(1100,1100+skew);ui.sync(shuffling());
+  assert.equal(ui.style('--shuffle-age'),'100ms');
+  assert.equal(ui.style('--shuffle-cover-time'),'1200ms');
  }
 });
 
