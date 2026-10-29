@@ -72,34 +72,79 @@ function render(force=false){const r=state.room;if(r?.roundId!==lastRound){close
 // Only the decorative, aria-hidden letter layer is animated.
 const letterStates=new WeakMap();
 const graphemes=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ru',{granularity:'grapheme'}):null;
+const reducedLetterMotion=matchMedia('(prefers-reduced-motion: reduce)');
 function animateLetter(node,frames,options){
- if(matchMedia('(prefers-reduced-motion: reduce)').matches)return null;
- return node.animate(frames,{duration:240,easing:'cubic-bezier(.2,.75,.25,1)',...options});
+ if(reducedLetterMotion.matches)return null;
+ return node.animate(frames,{duration:170,easing:'cubic-bezier(.2,.7,.3,1)',...options});
 }
 function syncLetters(input){
  if(!input?.closest('.animated-input'))return;
+ let current=letterStates.get(input);
+ if(!current){current={nodes:[],value:'',frame:0,scroll:0};letterStates.set(input,current);}
+ // Input, scrolling and server echoes share one update immediately before paint.
+ if(!current.frame)current.frame=requestAnimationFrame(()=>{current.frame=0;if(input.isConnected)paintLetters(input,current);});
+}
+function scatterLetter(layer,rect,bounds,text){
+ if(reducedLetterMotion.matches||!text.trim()||rect.right<bounds.left||rect.left>bounds.right)return;
+ const x=rect.left-bounds.left,y=rect.top-bounds.top;
+ // Limit simultaneous debris when a whole selection is removed or Backspace is held.
+ while(layer.childElementCount>42)layer.firstElementChild.remove();
+ const ghost=document.createElement('span');ghost.className='letter-dust-glyph';ghost.textContent=text;
+ ghost.style.left=x+'px';ghost.style.top=y+'px';layer.append(ghost);
+ const fade=animateLetter(ghost,[{opacity:.65},{opacity:0}],{duration:90});
+ fade.onfinish=fade.oncancel=()=>ghost.remove();
+ for(let i=0;i<5;i++){
+  const particle=document.createElement('i'),size=2+Math.random()*2;
+  particle.className='letter-particle';particle.style.width=particle.style.height=size+'px';
+  particle.style.left=(x+rect.width*(.15+Math.random()*.7))+'px';
+  particle.style.top=(y+rect.height*(.3+Math.random()*.4))+'px';layer.append(particle);
+  const dx=(i-2)*9+(Math.random()-.5)*10,dy=-10-Math.random()*20;
+  const animation=animateLetter(particle,[
+   {opacity:0,transform:'translate(0,0) scale(1)',offset:0},
+   {opacity:.95,transform:`translate(${dx*.15}px,${dy*.3}px) scale(1)`,offset:.12},
+   {opacity:.7,transform:`translate(${dx*.7}px,${dy}px) scale(.75)`,offset:.55},
+   {opacity:0,transform:`translate(${dx}px,${dy+22}px) scale(.25)`,offset:1}
+  ],{duration:360+Math.random()*140,easing:'linear'});
+  animation.onfinish=animation.oncancel=()=>particle.remove();
+ }
+}
+function paintLetters(input,current){
  const wrapper=input.closest('.animated-input'),track=wrapper.querySelector('.letter-track');
- let previous=letterStates.get(input)||[];
+ if(wrapper.classList.contains('composing'))return;
+ if(current.value===input.value){current.scroll=input.scrollLeft;track.style.transform='translateX('+(-current.scroll)+'px)';return;}
+ const previous=current.nodes;
  const chars=graphemes?Array.from(graphemes.segment(input.value),s=>s.segment):Array.from(input.value);
- if(chars.join('')===previous.map(n=>n.textContent).join('')){track.style.transform='translateX('+(-input.scrollLeft)+'px)';return;}
  // LCS keeps unchanged glyphs stable when editing the middle or replacing a selection.
  const dp=Array.from({length:previous.length+1},()=>new Uint16Array(chars.length+1));
  for(let i=previous.length-1;i>=0;i--)for(let j=chars.length-1;j>=0;j--)dp[i][j]=previous[i].textContent===chars[j]?1+dp[i+1][j+1]:Math.max(dp[i+1][j],dp[i][j+1]);
  const keep=new Map();let i=0,j=0;
  while(i<previous.length&&j<chars.length){if(previous[i].textContent===chars[j]){keep.set(j,previous[i]);i++;j++;}else if(dp[i+1][j]>=dp[i][j+1])i++;else j++;}
- const oldPositions=new Map(previous.map(n=>[n,n.offsetLeft]));
+ // Read all visible positions before changing the DOM, including in-flight movement.
+ const oldRects=new Map(previous.map(n=>[n,n.getBoundingClientRect()]));
+ const windowBox=wrapper.querySelector('.letter-window'),bounds=windowBox.getBoundingClientRect();
+ let particles=windowBox.querySelector('.letter-particles');
+ if(!particles){particles=document.createElement('div');particles.className='letter-particles';windowBox.append(particles);}
  const retained=new Set(keep.values());
  for(const node of previous)if(!retained.has(node)){
-  const ghost=node.cloneNode(true);ghost.classList.add('letter-leaving');ghost.style.left=node.offsetLeft+'px';track.append(ghost);node.remove();
-  const animation=animateLetter(ghost,[{opacity:1,transform:'translateY(0) scale(1)',filter:'blur(0)'},{opacity:0,transform:'translateY(-16px) scale(.7)',filter:'blur(4px)'}],{duration:210});
-  if(animation){animation.onfinish=()=>ghost.remove();animation.oncancel=()=>ghost.remove();}else ghost.remove();
+  scatterLetter(particles,oldRects.get(node),bounds,node.textContent);node.remove();
  }
- const next=chars.map((char,index)=>{let node=keep.get(index);if(!node){node=document.createElement('span');node.className='letter';node.textContent=char;}track.append(node);return node;});
- next.forEach((node,index)=>{
-  if(!keep.has(index))animateLetter(node,[{opacity:0,transform:'translateY(14px) scale(.75)',filter:'blur(4px)'},{opacity:1,transform:'translateY(0) scale(1)',filter:'blur(0)'}],{duration:280,delay:Math.min(index,6)*12});
-  else {const delta=oldPositions.get(node)-node.offsetLeft;if(delta)animateLetter(node,[{transform:'translateX('+delta+'px)'},{transform:'translateX(0)'}],{duration:180});}
+ let cursor=track.firstElementChild;
+ const next=chars.map((char,index)=>{
+  let node=keep.get(index);
+  if(!node){node=document.createElement('span');node.className='letter';const glyph=document.createElement('span');glyph.className='letter-glyph';glyph.textContent=char;node.append(glyph);}
+  // Appending a letter must not detach or restart the existing letters.
+  if(node!==cursor)track.insertBefore(node,cursor);
+  cursor=node.nextElementSibling;
+  for(const animation of node.getAnimations())animation.cancel();
+  return node;
  });
- letterStates.set(input,next);track.style.transform='translateX('+(-input.scrollLeft)+'px)';
+ track.style.transform='translateX('+(-input.scrollLeft)+'px)';
+ const newRects=new Map(next.map(n=>[n,n.getBoundingClientRect()]));
+ next.forEach((node,index)=>{
+  if(!keep.has(index))animateLetter(node.firstElementChild,[{opacity:0,transform:'translateY(4px)'},{opacity:1,transform:'translateY(0)'}]);
+  else {const delta=oldRects.get(node).left-newRects.get(node).left-(input.scrollLeft-current.scroll);if(Math.abs(delta)>.5)animateLetter(node,[{transform:`translateX(${delta}px)`},{transform:'translateX(0)'}],{duration:140});}
+ });
+ current.nodes=next;current.value=input.value;current.scroll=input.scrollLeft;
 }
 $('app').addEventListener('scroll',e=>{if(e.target.id==='guess')syncLetters(e.target);},true);
 $('app').addEventListener('compositionstart',e=>{if(e.target.id==='guess')e.target.closest('.animated-input').classList.add('composing');});
