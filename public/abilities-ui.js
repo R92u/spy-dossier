@@ -1,12 +1,17 @@
 'use strict';
-const abilityNames={coin:'50/50',silence:'Радиомолчание',vowels:'Гласный след',probe:'Пробник',shuffle:'Перетасовка',reverse:'Смена курса',spotlight:'Голос толпы'};
-const abilityDescriptions={coin:'Один бросок. Орёл открывает первую букву слова.',silence:'Один игрок пропустит ближайший ход. Его микрофон выключится до конца следующего чужого хода.',vowels:'Узнать число гласных: 0, 1, 2 или 3 и больше.',probe:'Проверить одну букву: есть ли она в слове, без указания позиции.',shuffle:'Перемешать места всех игроков и начать новый круг со случайного участника.',reverse:'Развернуть очередь тех, кто ещё не ходил в этом круге.',spotlight:'Дать выбранному игроку дополнительное слово. Затем вернётся прерванный ход.'};
+const abilityNames={coin:'50/50',silence:'Радиомолчание',vowels:'Гласный след',probe:'Пробник',shuffle:'Перетасовка',reverse:'Смена курса',spotlight:'Голос толпы',oneword:'Одним словом'};
+const abilityDescriptions={coin:'Один бросок. Орёл открывает первую букву слова.',silence:'Один игрок пропустит ближайший ход. Его микрофон выключится до конца следующего чужого хода.',vowels:'Узнать число гласных: 0, 1, 2 или 3 и больше.',probe:'Проверить одну букву: есть ли она в слове, без указания позиции.',shuffle:'Перемешать места всех игроков и начать новый круг со случайного участника.',reverse:'Развернуть очередь тех, кто ещё не ходил в этом круге.',oneword:'Прервать ход. Один круг все пишут по одному слову, микрофоны выключены. Прерванный игрок пишет последним.',spotlight:'Дать выбранному игроку дополнительное слово. Затем вернётся прерванный ход.'};
 let abilityTargetOpen=false,abilityProbeDraft='',abilityCoinSeen='',abilityCoinEvent=null,wheelCaptionTimer,coinCloseTimer,lastShuffleUI='',lastSpotlightUI='';
 const wheelItems=pool=>Array.from({length:pool.length===1?6:pool.length<4?pool.length*2:pool.length},(_,i)=>pool[i%pool.length]);
+const strongAbilities=['silence','shuffle','reverse','spotlight','oneword'];
+function abilityPool(r,strong){
+ const a=r.abilities;
+ return `<div class="ability-pool">${Object.entries(abilityNames).filter(([id])=>strongAbilities.includes(id)===strong).map(([id,name])=>{const discord=['silence','oneword'].includes(id);return `<label class="ability-choice"><input type="checkbox" data-ability-pool="${id}" ${a.pool.includes(id)?'checked':''} ${discord&&!a.discordReady&&!a.pool.includes(id)?'disabled':''}><span><strong>${name}${discord?' · Discord':''}</strong><small>${abilityDescriptions[id]}</small></span></label>`;}).join('')}</div>`;
+}
 function abilitySettings(r){
  const a=r.abilities||{enabled:false,wheel:true,censored:false,pool:['coin']},host=r.hostId===state.me;
  if(!host)return a.enabled?`<section class="ability-settings"><h3>Способности шпиона</h3><p class="field-note">${a.pool.map(id=>abilityNames[id]).join(' · ')}${!a.wheel?' · Секретная выдача':a.censored?' · Колесо с цензурой':' · Открытое колесо'}</p></section>`:'';
- return `<section class="ability-settings"><label class="switch-row"><span>Абилки шпиона<small>Своя случайная способность у каждого шпиона</small></span><input id="abilities-enabled" type="checkbox" role="switch" ${a.enabled?'checked':''}></label>${a.enabled?`<div class="ability-options"><label class="switch-row"><span>Анимация колеса<small>До открытия досье</small></span><input id="abilities-wheel" type="checkbox" role="switch" ${a.wheel?'checked':''}></label><label class="switch-row"><span>Цензура<small>${a.wheel?'Результат колеса и монетку видит только шпион':'Монетку видит только шпион'}</small></span><input id="abilities-censored" type="checkbox" role="switch" ${a.censored?'checked':''}></label>${!a.wheel?'<p class="field-note">Способность выдаётся тайно, без колеса.</p>':''}<div class="ability-pool">${Object.entries(abilityNames).map(([id,name])=>`<label class="ability-choice"><input type="checkbox" data-ability-pool="${id}" ${a.pool.includes(id)?'checked':''} ${id==='silence'&&!a.discordReady&&!a.pool.includes(id)?'disabled':''}><span><strong>${name}${id==='silence'?' · Discord':''}</strong><small>${abilityDescriptions[id]}</small></span></label>`).join('')}</div>${!a.discordReady?'<p class="field-note">Для «Радиомолчания» привяжите Discord в профиле и включите экспериментальную игру.</p>':''}</div>`:''}</section>`;
+ return `<section class="ability-settings"><label class="switch-row"><span>Абилки шпиона<small>Своя случайная способность у каждого шпиона</small></span><input id="abilities-enabled" type="checkbox" role="switch" ${a.enabled?'checked':''}></label>${a.enabled?`<div class="ability-options"><label class="switch-row"><span>Анимация колеса<small>До открытия досье</small></span><input id="abilities-wheel" type="checkbox" role="switch" ${a.wheel?'checked':''}></label><label class="switch-row"><span>Цензура<small>${a.wheel?'Результат колеса и монетку видит только шпион':'Монетку видит только шпион'}</small></span><input id="abilities-censored" type="checkbox" role="switch" ${a.censored?'checked':''}></label>${!a.wheel?'<p class="field-note">Способность выдаётся тайно, без колеса.</p>':''}${abilityPool(r,false)}${!a.discordReady?'<p class="field-note">Способности, меняющие ход игры, находятся в разделе storg abilites.</p>':''}</div>`:''}</section>`;
 }
 function abilityTestPicker(r){
  if(!r.testMode||!r.canTest||['waiting','ended','ability-draw'].includes(r.phase))return '';
@@ -65,7 +70,7 @@ function syncAbilityEffects(r){
  positionAbilityWheel(r);
  positionAbilityShuffle(r);
  syncAbilityCinematic(r);
- if(r?.abilityEffect){closeAbilityCoin();return;}
+ if(r?.abilityEffect||r?.phase==='one-word'){closeAbilityCoin();return;}
  const event=r?.ability?.coin;
  if(!event||['waiting','ended'].includes(r.phase)){closeAbilityCoin();if(!event){abilityCoinSeen='';abilityCoinEvent=null;}return;}
  let dialog=$('ability-effect');

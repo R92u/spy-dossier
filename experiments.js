@@ -14,7 +14,7 @@ class Experiments{
   this.game.need(Number.isInteger(d.micChance)&&d.micChance>=1&&d.micChance<=100,'Шанс должен быть от 1 до 100%.');
   this.game.need(!r.testMode||(!d.cooperative&&!d.multiSpy),'Сначала выключите одиночный тест.');
   if(!d.enabled){
-   this.game.need(!r.testMode&&!this.game.abilities.needsDiscord(r),'Сначала выключите одиночный тест и «Радиомолчание».');
+   this.game.need(!r.testMode&&!this.game.abilities.needsDiscord(r),'Сначала выключите одиночный тест и способности, которым нужен Discord.');
    r.experimentSettings=defaults();this.game.voice.configure(r,{enabled:false,radius:this.game.voice.settings(r).radius});return;
   }
   const next=Object.fromEntries([...bools,'spyCount','micChance'].map(key=>[key,d[key]]));

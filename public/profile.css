@@ -1,0 +1,12 @@
+.avatar,.vote-options .avatar{border-radius:50%!important;flex-shrink:0;overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
+.has-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.seat-avatar.has-avatar{display:block;overflow:hidden;border-radius:50%;padding:0;background:none!important}
+.vote-options .btn .avatar{width:36px;height:36px;min-width:36px;margin:0;font-size:15px}
+.vote-options .btn{overflow:hidden}.vote-options .btn .vote-name{margin:0;overflow:hidden;text-overflow:ellipsis}
+.avatar-profile{padding-bottom:22px;margin-bottom:24px;border-bottom:1px solid var(--border)}
+.profile-portrait{display:flex;align-items:center;gap:18px}.profile-portrait>.avatar{width:72px;height:72px;font-size:28px;background:var(--panel)}.profile-portrait h3{margin:0}.profile-portrait p{margin:4px 0}
+.avatar-tools{display:flex;gap:10px;align-items:center;margin-top:15px}.avatar-tools label{margin:0;color:var(--text);cursor:pointer}
+.one-word-speaker{display:flex;gap:16px;align-items:center}.one-word-speaker .avatar{width:56px;height:56px;font-size:24px}.one-word-speaker h2{margin:0}
+.one-word-history{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px;max-height:24vh;overflow:auto}.one-word-history>div{display:flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg)}.one-word-history small,.one-word-history b{display:block}.one-word-history small{font-size:10px;color:var(--muted)}.one-word-history .avatar{width:30px;height:30px;font-size:13px}
+body[data-theme="femboy"] .has-avatar{background-image:none}
+@media(max-width:600px){.one-word-panel{padding:18px}.avatar-tools{flex-wrap:wrap}}

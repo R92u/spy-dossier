@@ -2,7 +2,7 @@
 let dossierExpiryTimer,dossierOpening=0,dossierRevealPending=false;
 const flashDossier=r=>!!(r?.experiments?.flashWord&&r.role==='civilian');
 const dossierCanReady=r=>!flashDossier(r)||!!(r.dossier?.used&&gameTime()>=r.dossier.expiresAt);
-const guessWriter=r=>r?.guesserId===state.me;
+const guessWriter=r=>r?.phase==='one-word'?oneWordWriter(r):r?.guesserId===state.me;
 function dossierWord(r){
  if(r.role!=='civilian')return '';
  const visible=!flashDossier(r)||!!(r.dossier?.used&&gameTime()<r.dossier.expiresAt);

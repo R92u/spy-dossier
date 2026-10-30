@@ -1,10 +1,10 @@
 'use strict';
-const {randomBytes,randomInt}=require('node:crypto');const {VoiceBridge}=require('./voice');const {Profiles}=require('./profiles');const {Abilities}=require('./abilities');const {Experiments}=require('./experiments');
+const {randomBytes,randomInt}=require('node:crypto');const {VoiceBridge}=require('./voice');const {Profiles}=require('./profiles');const {Abilities}=require('./abilities');const {Experiments}=require('./experiments');const {Avatars}=require('./avatars');const {OneWord}=require('./one-word');
 const clean=(s,max=80)=>typeof s==='string'?s.trim().slice(0,max):'';
 const normalized=s=>clean(s).normalize('NFKC').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ');
 const shuffle=items=>{const a=[...items];for(let i=a.length-1;i>0;i--){const j=randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;};
 class Game {
- constructor({now=Date.now,voteMs=30000,profileSecret=process.env.SPY_PROFILE_SECRET||''}={}){this.rooms=new Map();this.sessions=new Map();this.now=now;this.voteMs=voteMs;this.voice=new VoiceBridge(this);this.profiles=new Profiles(this,profileSecret);this.abilities=new Abilities(this);this.experiments=new Experiments(this);}
+ constructor({now=Date.now,voteMs=30000,profileSecret=process.env.SPY_PROFILE_SECRET||''}={}){this.rooms=new Map();this.sessions=new Map();this.now=now;this.voteMs=voteMs;this.voice=new VoiceBridge(this);this.profiles=new Profiles(this,profileSecret);this.abilities=new Abilities(this);this.experiments=new Experiments(this);this.avatars=new Avatars(this);this.oneWord=new OneWord(this);}
  session(){const token=randomBytes(24).toString('hex');const s={token,id:randomBytes(8).toString('hex'),room:null,connected:false,lastSeen:this.now()};this.sessions.set(token,s);return s;}
  need(ok,message){if(!ok)throw Error(message);}
  room(s){const r=this.rooms.get(s.room);this.need(r,'Лобби уже закрыто. Создайте новое.');return r;}
@@ -17,7 +17,7 @@ class Game {
  finish(r,winner,reason){r.phase='ended';r.result={id:r.roundId,winner,reason,word:r.word,spyId:r.spyId,spyIds:[...(r.spyIds||[r.spyId])].filter(Boolean)};r.vote=null;this.abilities.finish(r);this.experiments.finish(r);}
  dealTo(r){return r.order.find(id=>r.players.some(p=>p.id===id&&p.alive&&!p.ready));}
  selectFirst(r){r.phase="selecting";r.selectionEndsAt=this.now()+4500;}
- next(r){this.abilities.next(r);this.experiments.observe(r);}
+ next(r){if(r.phase==='one-word'){this.oneWord.advance(r);this.experiments.observe(r);return;}this.abilities.next(r);this.experiments.observe(r);}
  resolve(r){
   if(!r.vote)return;const tally={};for(const id of Object.values(r.vote.ballots))if(id)tally[id]=(tally[id]||0)+1;
   const threshold=Math.floor(r.vote.eligible.length/2)+1,target=Object.keys(tally).find(id=>tally[id]>=threshold);
@@ -37,10 +37,11 @@ class Game {
   if(r.current===s.id)this.next(r);if(r.phase==='reveal'&&this.alive(r).every(p=>p.ready))this.selectFirst(r);this.experiments.observe(r);
  }
  connection(s,online){s.connected=online;s.lastSeen=this.now();const r=this.rooms.get(s.room);if(r){const p=r.players.find(p=>p.id===s.id);if(p)p.connected=online;}}
- tick(){this.voice.tick();this.profiles.tick();for(const s of this.sessions.values()){if(!s.connected&&this.now()-s.lastSeen>90000&&s.room)this.leave(s);if(!s.connected&&!s.room&&this.now()-s.lastSeen>3600000)this.sessions.delete(s.token);}for(const r of this.rooms.values()){this.abilities.tick(r);if(r.vote&&r.vote.endsAt<=this.now())this.resolve(r);if(r.phase==='selecting'&&r.selectionEndsAt<=this.now())r.phase='playing';this.experiments.tick(r);}}
+ tick(){this.avatars.prune();this.voice.tick();this.profiles.tick();for(const s of this.sessions.values()){if(!s.connected&&this.now()-s.lastSeen>90000&&s.room)this.leave(s);if(!s.connected&&!s.room&&this.now()-s.lastSeen>3600000)this.sessions.delete(s.token);}for(const r of this.rooms.values()){this.abilities.tick(r);if(r.vote&&r.vote.endsAt<=this.now())this.resolve(r);if(r.phase==='selecting'&&r.selectionEndsAt<=this.now())r.phase='playing';this.experiments.tick(r);}}
  act(s,action,d={}){try{return this.action(s,action,d);}finally{const r=this.rooms.get(s.room);if(r)this.experiments.observe(r);}}
  action(s,action,d={}){
   s.lastSeen=this.now();
+  if(action==='profileAvatar'){this.avatars.set(s,d.avatar);return;}
   if(action==='profileCode'){this.profiles.invite(s);return;}
   if(action==='profileCancel'){this.profiles.cancel(s);return;}
   if(action==='profileForget'){this.profiles.forget(s);return;}
@@ -49,7 +50,7 @@ class Game {
   if(action==='create'||action==='join'){
    this.need(!s.room,'Сначала выйдите из текущего лобби.');const name=clean(d.name,20);this.need(name,'Введите имя.');let r;
    if(action==='create'){let code;do{code=randomBytes(4).toString('hex').slice(0,5).toUpperCase();}while(this.rooms.has(code));r={code,hostId:s.id,players:[],phase:'waiting',round:0,notice:''};this.rooms.set(code,r);}else{r=this.rooms.get(clean(d.code,5).toUpperCase());this.need(r,'Лобби не найдено.');this.need(r.phase==='waiting','Раунд уже начался. Дождитесь нового.');this.need(!r.testMode,'Это одиночное тестовое лобби.');this.need(r.players.length<13,'В лобби уже 12 игроков.');}
-   this.need(!r.players.some(p=>normalized(p.name)===normalized(name)),'Это имя уже занято.');r.players.push({id:s.id,name,host:r.hostId===s.id,alive:true,ready:false,connected:s.connected});s.room=r.code;return;
+   this.need(!r.players.some(p=>normalized(p.name)===normalized(name)),'Это имя уже занято.');r.players.push({id:s.id,name,avatar:s.avatar||'',host:r.hostId===s.id,alive:true,ready:false,connected:s.connected});s.room=r.code;return;
   }
   const r=this.room(s),p=r.players.find(p=>p.id===s.id),host=r.hostId===s.id;
   this.need(p,'Вы не участник лобби.');
@@ -58,9 +59,10 @@ class Game {
   if(action==='testMode'){this.need(host&&r.phase==='waiting','Режим выбирает ведущий до старта.');this.need(this.canTest(s),'Тестовый режим доступен только Discord-профилю aqr1337.');this.need(typeof d.enabled==='boolean','Некорректный режим.');this.need(r.players.length===1,'Для теста создайте лобби без других игроков.');this.need(!d.enabled||(!this.experiments.cooperative(r)&&!this.experiments.settings(r).multiSpy),'Выключите совместный режим и несколько шпионов перед тестом.');r.testMode=d.enabled;p.host=!d.enabled;if(d.enabled){this.experiments.enable(r);this.voice.configure(r,{enabled:true,radius:0});}return;}
   if(action==='testStop'||action==='testVoteEnd'){this.need(host&&r.testMode&&this.canTest(s),'Тестовые действия недоступны.');this.need(!['waiting','ended'].includes(r.phase),'Тест ещё не запущен.');if(action==='testVoteEnd'){this.need(r.phase==='voting','Голосование не запущено.');this.resolve(r);}else this.finish(r,'civilians','Тест завершён. Микрофоны восстанавливаются.');return;}
   if(action==='abilitySettings'){this.need(host&&r.phase==='waiting','Способности настраивает ведущий до старта.');this.need(!d.enabled||!this.experiments.cooperative(r),'Способности отключены в совместном режиме.');this.abilities.configure(r,d);return;}
+  if(['oneWordType','oneWordSubmit'].includes(action)){this.oneWord.action(r,s,action,d);return;}
   if(action==='abilityUse'){this.abilities.use(r,s,d);return;}
   if(action==='testAbility'){this.abilities.test(r,s,d.id);return;}
-  if(action==='voiceSettings'){this.need(host&&r.phase==='waiting','Настройки доступны ведущему до старта.');this.need(!r.testMode||d.enabled,'Для теста оставьте управление микрофонами включённым.');this.need(d.enabled||!this.abilities.needsDiscord(r),'Сначала выключите «Радиомолчание» в способностях.');this.need(!d.enabled||!this.experiments.cooperative(r),'Микрофоны Discord отключены в совместном режиме.');this.voice.configure(r,d);if(d.enabled)this.experiments.enable(r);return;}
+  if(action==='voiceSettings'){this.need(host&&r.phase==='waiting','Настройки доступны ведущему до старта.');this.need(!r.testMode||d.enabled,'Для теста оставьте управление микрофонами включённым.');this.need(d.enabled||!this.abilities.needsDiscord(r),'Сначала выключите способности, которым нужен Discord.');this.need(!d.enabled||!this.experiments.cooperative(r),'Микрофоны Discord отключены в совместном режиме.');this.voice.configure(r,d);if(d.enabled)this.experiments.enable(r);return;}
   if(action==='voiceCode'){this.need(r.phase==='waiting','Привязка доступна до старта.');this.voice.invite(r,s);return;}
   if(action==='voiceDisconnect'){this.need(host,'Только ведущий отключает бота.');const link=this.voice.links.get(r.code);if(link)this.voice.disconnect(link.token);return;}
   if(action==='start'){
@@ -88,6 +90,6 @@ class Game {
   throw Error('Неизвестное действие.');
  }
  list(){return [...this.rooms.values()].filter(r=>!r.testMode).map(r=>{const host=r.players.find(p=>p.id===r.hostId);const playerCount=this.players(r).length;return {code:r.code,hostName:host?.name||'',playerCount,maxPlayers:12,phase:r.phase,hostOnline:!!host?.connected,joinable:r.phase==='waiting'&&playerCount<12&&!!host?.connected};}).sort((a,b)=>Number(b.joinable)-Number(a.joinable)||a.code.localeCompare(b.code));}
- view(s){const serverTime=this.now(),r=this.rooms.get(s.room);if(!r)return {serverTime,me:s.id,discord:this.profiles.view(s),room:null,lobbies:this.list()};const host=r.hostId===s.id&&!r.testMode,spy=this.isSpy(r,s.id),ended=r.phase==='ended';return {serverTime,me:s.id,discord:this.profiles.view(s),room:{...this.abilities.view(r,s),experiments:this.experiments.view(r),dossier:this.experiments.dossier(r,s),guesserId:r.guesserId||null,testMode:!!r.testMode,canTest:r.hostId===s.id&&this.canTest(s),voice:this.voice.view(r,s),code:r.code,phase:r.phase,round:r.round,roundId:r.roundId,players:r.players.map(p=>({...p})),hostId:r.hostId,theme:r.theme||'',hint:host||(spy&&r.first===s.id)||ended?r.hint||'':null,word:host||ended||this.experiments.wordVisible(r,s)?r.word||'':null,role:host?'host':r.phase==='waiting'?null:this.experiments.cooperative(r)?'cooperative':spy?'spy':'civilian',spyId:host||ended?r.spyId:null,spyIds:host||ended||(spy&&this.experiments.settings(r).spiesKnowEachOther)?[...(r.spyIds||[r.spyId])].filter(Boolean):null,order:r.order||[],dealTo:r.phase==='reveal'?this.dealTo(r):null,selectionEndsAt:r.selectionEndsAt,current:['reveal','ability-draw'].includes(r.phase)?null:r.current,cycle:r.cycle,notice:r.notice,guess:r.phase==='guessing'||ended?r.guess:null,vote:r.vote?{endsAt:r.vote.endsAt,total:r.vote.eligible.length,count:Object.keys(r.vote.ballots).length,required:Math.floor(r.vote.eligible.length/2)+1,voted:Object.hasOwn(r.vote.ballots,s.id),myVote:r.vote.ballots[s.id],initiator:r.vote.initiator}:null,result:r.result||null}};}
+ view(s){const serverTime=this.now(),r=this.rooms.get(s.room);if(!r)return {serverTime,me:s.id,avatar:s.avatar||'',discord:this.profiles.view(s),room:null,lobbies:this.list()};const host=r.hostId===s.id&&!r.testMode,spy=this.isSpy(r,s.id),ended=r.phase==='ended';return {serverTime,me:s.id,avatar:s.avatar||'',discord:this.profiles.view(s),room:{oneWord:this.oneWord.view(r),...this.abilities.view(r,s),experiments:this.experiments.view(r),dossier:this.experiments.dossier(r,s),guesserId:r.guesserId||null,testMode:!!r.testMode,canTest:r.hostId===s.id&&this.canTest(s),voice:this.voice.view(r,s),code:r.code,phase:r.phase,round:r.round,roundId:r.roundId,players:r.players.map(p=>({...p})),hostId:r.hostId,theme:r.theme||'',hint:host||(spy&&r.first===s.id)||ended?r.hint||'':null,word:host||ended||this.experiments.wordVisible(r,s)?r.word||'':null,role:host?'host':r.phase==='waiting'?null:this.experiments.cooperative(r)?'cooperative':spy?'spy':'civilian',spyId:host||ended?r.spyId:null,spyIds:host||ended||(spy&&this.experiments.settings(r).spiesKnowEachOther)?[...(r.spyIds||[r.spyId])].filter(Boolean):null,order:r.order||[],dealTo:r.phase==='reveal'?this.dealTo(r):null,selectionEndsAt:r.selectionEndsAt,current:['reveal','ability-draw'].includes(r.phase)?null:r.current,cycle:r.cycle,notice:r.notice,guess:r.phase==='guessing'||ended?r.guess:null,vote:r.vote?{endsAt:r.vote.endsAt,total:r.vote.eligible.length,count:Object.keys(r.vote.ballots).length,required:Math.floor(r.vote.eligible.length/2)+1,voted:Object.hasOwn(r.vote.ballots,s.id),myVote:r.vote.ballots[s.id],initiator:r.vote.initiator}:null,result:r.result||null}};}
 }
 module.exports={Game,normalized};

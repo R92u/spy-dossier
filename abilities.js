@@ -1,6 +1,6 @@
 'use strict';
 const {randomBytes,randomInt}=require('node:crypto');
-const IDS=['coin','silence','vowels','probe','shuffle','reverse','spotlight'];
+const IDS=['coin','silence','vowels','probe','shuffle','reverse','spotlight','oneword'];
 const ACTIVE=['reveal','selecting','playing','voting','guessing'];
 const segmenter=new Intl.Segmenter('ru',{granularity:'grapheme'});
 const normalizeLetter=value=>value.normalize('NFKC').toLocaleLowerCase('ru').replace(/ё/g,'е');
@@ -13,18 +13,18 @@ class Abilities{
   const host=this.game.voice.session(r.hostId);
   return !!this.game.profiles.read(host?.discord?.credential)&&this.game.voice.settings(r).enabled;
  }
- needsDiscord(r){const settings=this.settings(r);return settings.enabled&&settings.pool.includes('silence');}
+ needsDiscord(r){const settings=this.settings(r);return settings.enabled&&settings.pool.some(id=>['silence','oneword'].includes(id));}
  configure(r,d){
   this.game.need(['enabled','wheel','censored'].every(key=>typeof d[key]==='boolean'),'Некорректные настройки способностей.');
   this.game.need(Array.isArray(d.pool)&&d.pool.length<=IDS.length&&d.pool.every(id=>IDS.includes(id))&&new Set(d.pool).size===d.pool.length,'Некорректный список способностей.');
   this.game.need(!d.enabled||d.pool.length>0,'Включите хотя бы одну способность.');
-  this.game.need(!d.enabled||!d.pool.includes('silence')||this.discordReady(r),'Для «Радиомолчания» привяжите Discord-профиль ведущего и включите управление микрофонами.');
+  this.game.need(!d.enabled||!d.pool.some(id=>['silence','oneword'].includes(id))||this.discordReady(r),'Для этой способности привяжите Discord-профиль ведущего и включите управление микрофонами.');
   r.abilitySettings={enabled:d.enabled,wheel:d.wheel,censored:d.censored,pool:[...d.pool]};
  }
  ready(r){
   const settings=this.settings(r);if(!settings.enabled)return;
   this.game.need(settings.pool.length>0,'Включите хотя бы одну способность.');
-  this.game.need(!this.needsDiscord(r)||this.discordReady(r),'Для «Радиомолчания» нужен привязанный Discord и управление микрофонами.');
+  this.game.need(!this.needsDiscord(r)||this.discordReady(r),'Для этих способностей нужен привязанный Discord и управление микрофонами.');
  }
  begin(r){
   this.clear(r);r.turnSerial=1;
@@ -34,13 +34,13 @@ class Abilities{
   if(settings.wheel){const startedAt=this.game.now();r.phase='ability-draw';r.abilityDraw={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+5000,pool:[...settings.pool],result:id,censored:settings.censored};}
  }
  fresh(id){return {id,used:false,letter:null,coin:null,feedback:null};}
- clear(r){r.abilityEffect=null;r.turnDirection=1;r.spyAbilities=null;r.publicAbilityCoin=null;r.abilityState=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;r.turnQueue=null;r.turnAnchor=null;r.turnOrderSignature=null;r.cycleSpoken=[];}
- finish(r){r.abilityEffect=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;for(const ability of this.states(r))ability.coin=null;r.publicAbilityCoin=null;}
+ clear(r){r.oneWord=null;r.abilityEffect=null;r.turnDirection=1;r.spyAbilities=null;r.publicAbilityCoin=null;r.abilityState=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;r.turnQueue=null;r.turnAnchor=null;r.turnOrderSignature=null;r.cycleSpoken=[];}
+ finish(r){r.oneWord=null;r.abilityEffect=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;for(const ability of this.states(r))ability.coin=null;r.publicAbilityCoin=null;}
  test(r,s,id){
   this.game.need(r.testMode&&r.hostId===s.id&&this.game.canTest(s),'Выбор способности доступен только в одиночном тесте.');
   this.game.need(r.phase==='playing'&&!r.spotlight,'Дождитесь завершения дополнительного хода или анимации.');
   this.game.need(IDS.includes(id),'Неизвестная способность.');
-  if(id==='silence'){this.game.need(this.discordReady(r),'Для «Радиомолчания» нужен Discord.');this.game.voice.ready(r);}
+  if(['silence','oneword'].includes(id)){this.game.need(this.discordReady(r),'Для этой способности нужен Discord.');this.game.voice.ready(r);}
   r.silence=null;r.publicAbilityCoin=null;r.abilityState=this.fresh(id);r.spyAbilities={[s.id]:r.abilityState};
  }
  cycleOrder(r,anchor){
@@ -91,6 +91,7 @@ class Abilities{
  canUse(r,s){
   const ability=this.state(r,s),p=r.players.find(p=>p.id===s.id);
   if(!ability||ability.used||!this.game.isSpy(r,s.id)||this.game.experiments.cooperative(r)||!p?.alive||!ACTIVE.includes(r.phase))return false;
+  if(ability.id==='oneword')return r.phase==='playing'&&!r.spotlight&&this.discordReady(r);
   if(ability.id==='silence')return r.phase==='playing'&&!r.silence&&!r.spotlight&&this.discordReady(r);
   if(ability.id==='spotlight'&&(r.silence||r.micInterrupted))return false;
   if(['shuffle','reverse','spotlight'].includes(ability.id))return r.phase==='playing'&&!r.spotlight;
@@ -99,6 +100,7 @@ class Abilities{
  use(r,s,d){
   this.game.need(this.canUse(r,s),'Способность сейчас недоступна.');
   const ability=this.state(r,s);
+  if(ability.id==='oneword'){this.game.voice.ready(r);this.game.oneWord.begin(r);ability.used=true;return;}
   if(ability.id==='coin'){
    const startedAt=this.game.now();ability.used=true;
    ability.coin={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+2400,outcome:this.random(2)===0?'heads':'tails'};r.publicAbilityCoin=ability.coin;
