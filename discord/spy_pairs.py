@@ -33,8 +33,8 @@ class PairRooms:
         for user_id, origin in list(record['members'].items()):
             member = guild.get_member(int(user_id))
             current = member.voice.channel if member and member.voice else None
-            if current and str(current.id) in record['channels']:
-                destination = self.channel(origin)
+            if current and (str(current.id) in record['channels'] or record.get('destination') and str(current.id) == str(channel_id)):
+                destination = self.channel(record.get('destination', origin))
                 if not destination:
                     complete = False
                     continue
@@ -61,7 +61,24 @@ class PairRooms:
             self.channels.pop(temporary_id, None)
             record['channels'].remove(temporary_id)
             self.c.save()
+        if complete and record.get('destination') and record.get('sourceOwned'):
+            source = self.channel(channel_id)
+            if source and not source.members:
+                try:
+                    await source.delete(reason='Шпион: переход в новый общий канал')
+                    getattr(self.c, 'channel_owners', {}).pop(int(channel_id), None)
+                    if getattr(self.c, 'save_active', None):
+                        self.c.save_active()
+                except Exception:
+                    return False
         if complete:
+            if record.get('destination'):
+                destination = self.channel(record['destination'])
+                report = {'id': record['id'], 'status': 'returned', 'channelId': record['destination'], 'channelName': getattr(destination, 'name', 'Общий канал')}
+                self.reports[str(channel_id)] = report
+                binding = self.c.data['bindings'].get(str(channel_id))
+                if binding is not None:
+                    binding['pendingReport'] = report
             self.c.data['pairs'].pop(str(channel_id), None)
             self.c.save()
         return complete
@@ -82,6 +99,9 @@ class PairRooms:
             raise ValueError('Один из участников покинул игровой войс')
         key = str(channel.id)
         record = {'id': event['id'], 'guild': str(channel.guild.id), 'channels': [], 'members': {}, 'ready': False}
+        self.channels[key] = channel
+        record['sourceOwned'] = channel.id in getattr(self.c, 'channel_owners', {})
+        record['sourceMembers'] = [str(m.id) for m in channel.members if not m.bot]
         self.c.data['pairs'][key] = record
         self.c.save()
         steps = max(1, len([g for g in groups if g]) + len(ids))
@@ -122,6 +142,35 @@ class PairRooms:
         record['expires'] = time.time() + 25
         self.c.save()
 
+    async def common_room(self, source, event, record):
+        if record.get('destination'):
+            destination = self.channel(record['destination'])
+            if not destination:
+                raise ValueError('Новый общий канал недоступен; повторите возврат')
+            return destination
+        factory = getattr(self.c, 'create_temp_channel', None)
+        owner = source.guild.get_member(int(event.get('hostUserId') or 0))
+        if not factory or not owner or not owner.voice or not owner.voice.channel:
+            raise ValueError('Ведущий должен быть в войсе; проверьте запуск через spy_boot.py')
+        existing = set(getattr(self.c, 'channel_owners', {}))
+        # Persist the intention before invoking app.py, which creates and moves the owner.
+        record['members'].update({user: str(source.id) for user in record.get('sourceMembers', [])})
+        self.c.save()
+        await factory(owner, source)
+        created = set(self.c.channel_owners) - existing
+        if len(created) != 1:
+            raise ValueError('app.py не создал общий канал; проверьте права бота')
+        channel_id = created.pop()
+        record['destination'] = str(channel_id)
+        self.c.save()
+        for _ in range(30):
+            destination = self.channel(channel_id)
+            if destination:
+                self.channels[str(channel_id)] = destination
+                return destination
+            await asyncio.sleep(.1)
+        raise ValueError('Discord ещё не подтвердил создание общего канала')
+
     async def apply(self, channel, policy, heartbeat):
         key = str(channel.id)
         event = policy.get('pairEvent')
@@ -134,8 +183,13 @@ class PairRooms:
         report = {'id': event['id'], 'status': 'preparing', 'progress': 0}
         self.reports[key] = report
         if event['stage'] == 'return':
+            destination = None
+            if record and record.get('ready') and event.get('kind') == 'cross':
+                destination = await self.common_room(channel, event, record)
             if await self.return_all(key):
                 report['status'] = 'returned'
+                if destination:
+                    report.update(channelId=str(destination.id), channelName=destination.name)
             return True
         if record and record['id'] != event['id']:
             if not await self.return_all(key):

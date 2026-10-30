@@ -95,7 +95,15 @@ class VoiceController:
         try:
             while not self.closing and channel_id in self.data['bindings']:
                 binding = self.data['bindings'][channel_id]
-                channel = self.bot.get_channel(int(channel_id))
+                pending = binding.get('pendingReport', {})
+                if pending.get('channelId') and pending['channelId'] != channel_id:
+                    next_id = pending['channelId']
+                    self.data['bindings'][next_id] = binding
+                    self.data['bindings'].pop(channel_id, None)
+                    self.save()
+                    self.launch(next_id)
+                    return
+                channel = self.pairs.channel(channel_id)
                 try:
                     if not channel or not self.bot.is_ready():
                         raise ValueError('Discord не подключён или канал удалён')
@@ -104,11 +112,21 @@ class VoiceController:
                     await self.restore_departed(channel)
                     async def heartbeat():
                         return await self.post('poll', {'roster': self.pairs.roster(channel), 'error': error,
-                            'pairRooms': 1, 'pairReport': self.pairs.reports.get(channel_id)}, binding['token'])
+                            'pairRooms': 1, 'pairReport': binding.get('pendingReport') or self.pairs.reports.get(channel_id)}, binding['token'])
                     policy = await heartbeat()
+                    if policy.get('channelId') == channel_id and binding.pop('pendingReport', None):
+                        self.save()
                     if policy.get('closed'):
                         break
                     handled = await self.pairs.apply(channel, policy, heartbeat)
+                    report = self.pairs.reports.get(channel_id, {})
+                    if report.get('status') == 'returned' and report.get('channelId') and report['channelId'] != channel_id:
+                        next_id = report['channelId']
+                        self.data['bindings'][next_id] = {**binding, 'pendingReport': report}
+                        self.data['bindings'].pop(channel_id, None)
+                        self.save()
+                        self.launch(next_id)
+                        return
                     if not handled:
                         await asyncio.wait_for(self.apply(channel, policy), 4)
                     error = None

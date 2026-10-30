@@ -15,7 +15,7 @@ class PairRooms{
   for(let i=groups.length-1;i>0;i--){const j=this.random(i+1);[groups[i],groups[j]]=[groups[j],groups[i]];}
   const now=this.game.now();r.pairEvent={id:randomBytes(12).toString('hex'),kind,groups,resume,stage:'prepare',startedAt:now,deadline:now+90000,endsAt:null,progress:0,error:null};r.phase='pair-rooms';
  }
- command(r,l){const e=r.pairEvent;if(!e)return null;return {id:e.id,stage:e.stage,endsAt:e.endsAt,groups:e.groups.map(group=>group.map(id=>l.members.get(id)).filter(Boolean))};}
+ command(r,l){const e=r.pairEvent;if(!e)return null;return {id:e.id,kind:e.kind,hostUserId:l.members.get(r.hostId),stage:e.stage,endsAt:e.endsAt,groups:e.groups.map(group=>group.map(id=>l.members.get(id)).filter(Boolean))};}
  report(r,d){
   const e=r.pairEvent;if(!e||!d||d.id!==e.id)return;
   if(d.error&&e.stage!=='return'){e.error='Не удалось подготовить комнаты. Возвращаем участников.';this.returning(r);}

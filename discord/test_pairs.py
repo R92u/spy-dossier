@@ -130,3 +130,44 @@ class PairTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await fresh.pairs.apply(self.channel, {'pairEvent': self.event}, self.heartbeat)
         self.assertNotEqual(fresh.pairs.reports['200']['status'], 'ready')
+
+    async def test_cross_uses_existing_factory_and_moves_everyone_to_saved_name(self):
+        host = Member(9, self.channel)
+        self.members.append(host)
+        self.channel.members.append(host)
+        self.c.channel_owners = {200: 9}
+        self.c.save_active = lambda: None
+        self.c.data['bindings']['200'] = {'token': 'test'}
+        calls = []
+        async def factory(owner, source):
+            calls.append((owner, source))
+            destination = Channel(888, self.guild)
+            destination.name = 'Saved host name'
+            self.guild.channels[888] = destination
+            self.c.channel_owners[888] = owner.id
+            await owner.move_to(destination, reason='app.py')
+        self.c.create_temp_channel = factory
+        self.event.update(kind='cross', hostUserId='9')
+        await self.prepare()
+        self.event['stage'] = 'return'
+        await self.c.pairs.apply(self.channel, {'pairEvent': self.event}, self.heartbeat)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(all(m.voice.channel.id == 888 for m in self.members))
+        self.assertEqual(set(self.guild.channels), {888})
+        self.assertEqual(self.c.data['bindings']['200']['pendingReport']['channelId'], '888')
+        self.assertEqual(self.c.pairs.reports['200']['channelName'], 'Saved host name')
+
+    async def test_common_factory_failure_keeps_existing_rooms_recoverable(self):
+        host = Member(9, self.channel)
+        self.members.append(host)
+        self.channel.members.append(host)
+        self.c.channel_owners = {200: 9}
+        self.c.create_temp_channel = AsyncMock(return_value=None)
+        self.event.update(kind='cross', hostUserId='9')
+        await self.prepare()
+        self.event['stage'] = 'return'
+        with self.assertRaises(ValueError):
+            await self.c.pairs.apply(self.channel, {'pairEvent': self.event}, self.heartbeat)
+        await self.c.pairs.return_all('200')
+        self.assertTrue(all(m.voice.channel.id == 200 for m in self.members))
+        self.assertEqual(set(self.guild.channels), {200})

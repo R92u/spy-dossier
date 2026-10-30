@@ -64,3 +64,12 @@ test('return timeout stays frozen until acknowledgement or explicit host cancell
 test('temporary disconnection does not silently acknowledge the shared dossier',()=>{
  const {g,r,host,players}=setup({ability:'variables',suspicions:true});for(let i=0;i<players.length;i++)g.act(host,'next');g.connection(players[0],false);g.tick();for(const s of [host,...players.slice(1)])g.act(s,'suspicionsRead');assert.equal(r.phase,'suspicions');g.connection(players[0],true);g.act(players[0],'suspicionsRead');assert.equal(r.phase,'playing');
 });
+
+test('successful common-channel migration preserves voice mapping and future turn policy',()=>{
+ const {g,r,players,poll,advance}=setup();g.act(players[0],'abilityUse',{targetId:players[1].id});const id=r.pairEvent.id;
+ const command=poll().pairEvent;assert(command.hostUserId);assert.equal(command.kind,'cross');
+ poll({id,status:'ready'});advance(20000);
+ const result=poll({id,status:'returned',channelId:'100000000000000999',channelName:'Saved name'});
+ assert.equal(result.channelId,'100000000000000999');assert.equal(result.mode,'turn');assert.equal(r.phase,'playing');assert.equal(g.view(players[0]).room.voice.channelName,'Saved name');assert(result.allowed.length>0);
+ poll({id,status:'returned',channelId:'100000000000000888'});assert.equal(poll().channelId,'100000000000000999');
+});
