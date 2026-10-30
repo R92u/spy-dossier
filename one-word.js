@@ -26,7 +26,7 @@ class OneWord{
   r.turnSerial=(r.turnSerial||1)+1;
   if(w.pending.length){r.current=w.pending[0];return;}
   const order=w.order.filter(id=>alive.has(id));r.oneWord=null;r.phase='playing';r.cycle++;
-  r.current=order[0];r.turnAnchor=r.current;r.turnQueue=order.slice(1);r.turnOrderSignature=r.order.join(',');r.cycleSpoken=[r.current];
+  r.current=order[0];r.turnAnchor=r.current;r.turnQueue=order.slice(1);r.turnOrderSignature=r.order.join(',');r.cycleSpoken=[r.current];this.game.suspicions.reveal(r,r.cycle-1);
  }
  view(r){return r.oneWord?{draft:r.oneWord.draft,entries:r.oneWord.entries.map(e=>({...e})),index:r.oneWord.order.length-r.oneWord.pending.length+1,total:r.oneWord.order.length}:null;}
 }

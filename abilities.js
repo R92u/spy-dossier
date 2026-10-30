@@ -1,6 +1,6 @@
 'use strict';
 const {randomBytes,randomInt}=require('node:crypto');
-const IDS=['coin','silence','vowels','probe','shuffle','reverse','spotlight','oneword'];
+const IDS=['coin','silence','vowels','probe','shuffle','reverse','spotlight','oneword','cross','variables'];
 const ACTIVE=['reveal','selecting','playing','voting','guessing'];
 const segmenter=new Intl.Segmenter('ru',{granularity:'grapheme'});
 const normalizeLetter=value=>value.normalize('NFKC').toLocaleLowerCase('ru').replace(/ё/g,'е');
@@ -13,12 +13,12 @@ class Abilities{
   const host=this.game.voice.session(r.hostId);
   return !!this.game.profiles.read(host?.discord?.credential)&&this.game.voice.settings(r).enabled;
  }
- needsDiscord(r){const settings=this.settings(r);return settings.enabled&&settings.pool.some(id=>['silence','oneword'].includes(id));}
+ needsDiscord(r){const settings=this.settings(r);return settings.enabled&&settings.pool.some(id=>['silence','oneword','cross'].includes(id));}
  configure(r,d){
   this.game.need(['enabled','wheel','censored'].every(key=>typeof d[key]==='boolean'),'Некорректные настройки способностей.');
   this.game.need(Array.isArray(d.pool)&&d.pool.length<=IDS.length&&d.pool.every(id=>IDS.includes(id))&&new Set(d.pool).size===d.pool.length,'Некорректный список способностей.');
   this.game.need(!d.enabled||d.pool.length>0,'Включите хотя бы одну способность.');
-  this.game.need(!d.enabled||!d.pool.some(id=>['silence','oneword'].includes(id))||this.discordReady(r),'Для этой способности привяжите Discord-профиль ведущего и включите управление микрофонами.');
+  this.game.need(!d.enabled||!d.pool.some(id=>['silence','oneword','cross'].includes(id))||this.discordReady(r),'Для этой способности привяжите Discord-профиль ведущего и включите управление микрофонами.');
   r.abilitySettings={enabled:d.enabled,wheel:d.wheel,censored:d.censored,pool:[...d.pool]};
  }
  ready(r){
@@ -40,7 +40,7 @@ class Abilities{
   this.game.need(r.testMode&&r.hostId===s.id&&this.game.canTest(s),'Выбор способности доступен только в одиночном тесте.');
   this.game.need(r.phase==='playing'&&!r.spotlight,'Дождитесь завершения дополнительного хода или анимации.');
   this.game.need(IDS.includes(id),'Неизвестная способность.');
-  if(['silence','oneword'].includes(id)){this.game.need(this.discordReady(r),'Для этой способности нужен Discord.');this.game.voice.ready(r);}
+  if(['silence','oneword','cross'].includes(id)){this.game.need(this.discordReady(r),'Для этой способности нужен Discord.');this.game.voice.ready(r);}
   r.silence=null;r.publicAbilityCoin=null;r.abilityState=this.fresh(id);r.spyAbilities={[s.id]:r.abilityState};
  }
  cycleOrder(r,anchor){
@@ -91,6 +91,8 @@ class Abilities{
  canUse(r,s){
   const ability=this.state(r,s),p=r.players.find(p=>p.id===s.id);
   if(!ability||ability.used||!this.game.isSpy(r,s.id)||this.game.experiments.cooperative(r)||!p?.alive||!ACTIVE.includes(r.phase))return false;
+  if(ability.id==='cross')return r.phase==='playing'&&!r.spotlight&&this.discordReady(r);
+  if(ability.id==='variables')return r.phase==='playing'&&!r.spotlight;
   if(ability.id==='oneword')return r.phase==='playing'&&!r.spotlight&&this.discordReady(r);
   if(ability.id==='silence')return r.phase==='playing'&&!r.silence&&!r.spotlight&&this.discordReady(r);
   if(ability.id==='spotlight'&&(r.silence||r.micInterrupted))return false;
@@ -100,6 +102,8 @@ class Abilities{
  use(r,s,d){
   this.game.need(this.canUse(r,s),'Способность сейчас недоступна.');
   const ability=this.state(r,s);
+  if(ability.id==='cross'){this.game.pairs.begin(r,{spyId:s.id,targetId:d.targetId});ability.used=true;return;}
+  if(ability.id==='variables'){this.ensureTurns(r);for(let i=r.turnQueue.length-1;i>0;i--){const j=this.random(i+1);[r.turnQueue[i],r.turnQueue[j]]=[r.turnQueue[j],r.turnQueue[i]];}ability.used=true;return;}
   if(ability.id==='oneword'){this.game.voice.ready(r);this.game.oneWord.begin(r);ability.used=true;return;}
   if(ability.id==='coin'){
    const startedAt=this.game.now();ability.used=true;
@@ -158,7 +162,7 @@ class Abilities{
   const draw=r.phase==='ability-draw'?r.abilityDraw:null;
   return {
    abilities:{...settings,pool:[...settings.pool],discordReady:this.discordReady(r)},
-   ability:assigned?{id:spy||publicAssignment?assigned.id:null,used:spy||publicAssignment?assigned.used:false,letter:spy?assigned.letter:null,feedback:spy?assigned.feedback:null,coin,silence:r.silence?{targetId:r.silence.targetId,pending:r.silence.pending}:null,canUse:this.canUse(r,s)}:null,
+   ability:assigned?{id:spy||publicAssignment?assigned.id:null,used:spy||publicAssignment&&assigned.id!=='variables'?assigned.used:false,letter:spy?assigned.letter:null,feedback:spy?assigned.feedback:null,coin,silence:r.silence?{targetId:r.silence.targetId,pending:r.silence.pending}:null,canUse:this.canUse(r,s)}:null,
    abilityDraw:draw?{id:draw.id,startedAt:draw.startedAt,endsAt:draw.endsAt,pool:[...draw.pool],result:spy?own?.id||null:!multi&&!draw.censored?draw.result:null,censored:draw.censored}:null,
    abilityEffect:r.abilityEffect?{...r.abilityEffect}:null,
    abilityShuffle:r.abilityShuffle?{...r.abilityShuffle}:null,

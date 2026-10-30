@@ -61,7 +61,7 @@ test('microphone slider previews locally and submits exactly the eight mutable f
  assert.equal(ui.calls.length,0);assert.equal(ui.nodes.get('experiment-mic-value').textContent,'37%');assert.equal(ui.nodes.get('experiment-mic-chance')['aria-valuetext'],'37%');
  assert(ui.render().includes('value="37"'),'a heartbeat render preserves a focused slider preview');
  ui.change('experiment-mic-chance',37);const {action,payload}=ui.calls[0];assert.equal(action,'experimentSettings');assert.equal(payload.micChance,37);
- assert.deepEqual(Object.keys(payload).sort(),['enabled','flashWord','multiSpy','spyCount','spiesKnowEachOther','cooperative','micChaos','micChance'].sort());
+ assert.deepEqual(Object.keys(payload).sort(),['enabled','flashWord','multiSpy','spyCount','spiesKnowEachOther','cooperative','micChaos','micChance','suspicions','commonGround'].sort());
  assert.equal(payload.flashWord,true);assert.equal(payload.spiesKnowEachOther,true);assert(!('maxSpies'in payload));
  ui.blur('experiment-mic-chance');assert(ui.render().includes('value="10"'),'unfocused UI uses authoritative server data');
 });

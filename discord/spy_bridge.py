@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
+from spy_pairs import PairRooms
 
 SITE = os.getenv('SPY_GAME_URL', 'https://spy-dossier.onrender.com').rstrip('/')
 
@@ -19,6 +20,7 @@ class VoiceController:
         self.tasks = {}
         self.http = None
         self.closing = False
+        self.pairs = PairRooms(self)
 
     def save(self):
         temporary = self.path.with_suffix('.tmp')
@@ -100,27 +102,42 @@ class VoiceController:
                     if not channel.permissions_for(channel.guild.me).mute_members:
                         raise ValueError('Боту нужно право Mute Members в голосовом канале')
                     await self.restore_departed(channel)
-                    policy = await self.post('poll', {'roster': [str(m.id) for m in channel.members if not m.bot], 'error': error}, binding['token'])
+                    async def heartbeat():
+                        return await self.post('poll', {'roster': self.pairs.roster(channel), 'error': error,
+                            'pairRooms': 1, 'pairReport': self.pairs.reports.get(channel_id)}, binding['token'])
+                    policy = await heartbeat()
                     if policy.get('closed'):
                         break
-                    await asyncio.wait_for(self.apply(channel, policy), 4)
+                    handled = await self.pairs.apply(channel, policy, heartbeat)
+                    if not handled:
+                        await asyncio.wait_for(self.apply(channel, policy), 4)
                     error = None
                 except ValueError as exc:
                     error = str(exc)
+                    if channel_id in self.pairs.reports:
+                        self.pairs.reports[channel_id]['error'] = error
+                    await self.pairs.return_all(channel_id)
                     await self.restore(channel_id)
                     if 'Привязка бота завершена' in error:
                         break
                 except Exception:
-                    error = 'Ошибка Discord или сервера игры; микрофоны восстанавливаются'
+                    error = 'Ошибка Discord или сервера игры; участники и микрофоны восстанавливаются'
+                    if channel_id in self.pairs.reports:
+                        self.pairs.reports[channel_id]['error'] = error
+                    await self.pairs.return_all(channel_id)
                     await self.restore(channel_id)
                 await asyncio.sleep(.8)
         finally:
+            await self.pairs.return_all(channel_id)
             await self.restore(channel_id)
             self.data['bindings'].pop(channel_id, None)
             self.save()
 
     async def recover_unbound(self):
         while not self.closing:
+            for channel in list(self.data['pairs']):
+                if channel not in self.data['bindings']:
+                    await self.pairs.return_all(channel)
             for channel in {r['channel'] for r in self.data['muted'].values()} - self.data['bindings'].keys():
                 await self.restore(channel)
             await asyncio.sleep(2)
@@ -276,6 +293,8 @@ def install_spy(bot, channel_owners=None):
         except (NotImplementedError, RuntimeError):
             pass
         controller.http = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=4))
+        for channel_id in list(controller.data['pairs']):
+            await controller.pairs.return_all(channel_id)
         await controller.restore()
         recovery = asyncio.create_task(controller.recover_unbound())
         for channel_id in list(controller.data['bindings']):
@@ -312,4 +331,3 @@ def install_spy(bot, channel_owners=None):
 
     bot.close = close
     return controller
-

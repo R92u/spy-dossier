@@ -1,12 +1,12 @@
 'use strict';
-const abilityNames={coin:'50/50',silence:'Радиомолчание',vowels:'Гласный след',probe:'Пробник',shuffle:'Перетасовка',reverse:'Смена курса',spotlight:'Голос толпы',oneword:'Одним словом'};
-const abilityDescriptions={coin:'Один бросок. Орёл открывает первую букву слова.',silence:'Один игрок пропустит ближайший ход. Его микрофон выключится до конца следующего чужого хода.',vowels:'Узнать число гласных: 0, 1, 2 или 3 и больше.',probe:'Проверить одну букву: есть ли она в слове, без указания позиции.',shuffle:'Перемешать места всех игроков и начать новый круг со случайного участника.',reverse:'Развернуть очередь тех, кто ещё не ходил в этом круге.',oneword:'Прервать ход. Один круг все пишут по одному слову, микрофоны выключены. Прерванный игрок пишет последним.',spotlight:'Дать выбранному игроку дополнительное слово. Затем вернётся прерванный ход.'};
+const abilityNames={coin:'50/50',silence:'Радиомолчание',vowels:'Гласный след',probe:'Пробник',shuffle:'Перетасовка',reverse:'Смена курса',spotlight:'Голос толпы',oneword:'Одним словом',cross:'Перекрёстный допрос',variables:'Слом переменных'};
+const abilityDescriptions={cross:'Выберите собеседника. Все разделятся по комнатам Discord на 20 секунд, затем вернутся к прежнему ходу.',variables:'Тайно перемешать оставшиеся ходы текущего круга. Текущий игрок продолжит говорить.',coin:'Один бросок. Орёл открывает первую букву слова.',silence:'Один игрок пропустит ближайший ход. Его микрофон выключится до конца следующего чужого хода.',vowels:'Узнать число гласных: 0, 1, 2 или 3 и больше.',probe:'Проверить одну букву: есть ли она в слове, без указания позиции.',shuffle:'Перемешать места всех игроков и начать новый круг со случайного участника.',reverse:'Развернуть очередь тех, кто ещё не ходил в этом круге.',oneword:'Прервать ход. Один круг все пишут по одному слову, микрофоны выключены. Прерванный игрок пишет последним.',spotlight:'Дать выбранному игроку дополнительное слово. Затем вернётся прерванный ход.'};
 let abilityTargetOpen=false,abilityProbeDraft='',abilityCoinSeen='',abilityCoinEvent=null,wheelCaptionTimer,coinCloseTimer,lastShuffleUI='',lastSpotlightUI='';
 const wheelItems=pool=>Array.from({length:pool.length===1?6:pool.length<4?pool.length*2:pool.length},(_,i)=>pool[i%pool.length]);
-const strongAbilities=['silence','shuffle','reverse','spotlight','oneword'];
+const strongAbilities=['silence','shuffle','reverse','spotlight','oneword','cross','variables'];
 function abilityPool(r,strong){
  const a=r.abilities;
- return `<div class="ability-pool">${Object.entries(abilityNames).filter(([id])=>strongAbilities.includes(id)===strong).map(([id,name])=>{const discord=['silence','oneword'].includes(id);return `<label class="ability-choice"><input type="checkbox" data-ability-pool="${id}" ${a.pool.includes(id)?'checked':''} ${discord&&!a.discordReady&&!a.pool.includes(id)?'disabled':''}><span><strong>${name}${discord?' · Discord':''}</strong><small>${abilityDescriptions[id]}</small></span></label>`;}).join('')}</div>`;
+ return `<div class="ability-pool">${Object.entries(abilityNames).filter(([id])=>strongAbilities.includes(id)===strong).map(([id,name])=>{const discord=['silence','oneword','cross'].includes(id);return `<label class="ability-choice"><input type="checkbox" data-ability-pool="${id}" ${a.pool.includes(id)?'checked':''} ${discord&&!a.discordReady&&!a.pool.includes(id)?'disabled':''}><span><strong>${name}${discord?' · Discord':''}</strong><small>${abilityDescriptions[id]}</small></span></label>`;}).join('')}</div>`;
 }
 function abilitySettings(r){
  const a=r.abilities||{enabled:false,wheel:true,censored:false,pool:['coin']},host=r.hostId===state.me;
@@ -20,8 +20,8 @@ function abilityTestPicker(r){
 }
 function abilityControl(r,context='table'){
  const a=r.ability;if(r.role!=='spy'||!a?.id||['waiting','ended','ability-draw','shuffling'].includes(r.phase))return '';
- const used=a.used,coin=a.id==='coin',targeted=['silence','spotlight'].includes(a.id),feedback=a.feedback||{};
- const targets=abilityTargetOpen&&!used&&targeted&&r.phase==='playing'?`<div class="ability-targets" role="group" aria-label="Выберите цель способности">${r.players.filter(p=>!p.host&&p.alive&&(a.id!=='spotlight'||p.id!==r.current)).map(p=>button(esc(p.name)+(p.id===state.me?' · я':''),'abilityTarget','ghost small',`data-target="${p.id}"`)).join('')}${button('Отмена','abilityCancel','ghost small')}</div>`:'';
+ const used=a.used,coin=a.id==='coin',targeted=['silence','spotlight','cross'].includes(a.id),feedback=a.feedback||{};
+ const targets=abilityTargetOpen&&!used&&targeted&&r.phase==='playing'?`<div class="ability-targets" role="group" aria-label="Выберите цель способности">${r.players.filter(p=>!p.host&&p.alive&&(a.id!=='cross'||p.id!==state.me)&&(a.id!=='spotlight'||p.id!==r.current)).map(p=>button(esc(p.name)+(p.id===state.me?' · я':''),'abilityTarget','ghost small',`data-target="${p.id}"`)).join('')}${button('Отмена','abilityCancel','ghost small')}</div>`:'';
  let result=a.letter?`<div class="ability-letter">Первая буква <strong>${esc(a.letter)}</strong></div>`:feedback.vowels!==undefined?`<div class="ability-letter">Гласных в слове <strong>${feedback.vowels==='3+'?'3+':esc(feedback.vowels)}</strong></div>`:feedback.probe?`<div class="ability-letter"><strong>${esc(feedback.probe.letter)}</strong>${feedback.probe.present?'Есть в слове':'Нет в слове'}</div>`:'';
  if(!result)result=`<p class="ability-description">${used?(coin?(a.coin?.outcome==='tails'?'Решка. Подсказки нет.':a.coin?.outcome?'Орёл. Подсказка получена.':'Монетка в воздухе…'):'Способность использована.'):abilityDescriptions[a.id]}</p>`;
  const probe=!used&&a.id==='probe'?`<div class="ability-probe"><input id="ability-probe-${context}" data-ability-probe maxlength="2" aria-label="Буква для проверки" value="${esc(abilityProbeDraft)}" placeholder="А" autocomplete="off">${button('Проверить букву','abilityProbe','ability-button',a.canUse?'':'disabled')}</div>`:'';
@@ -70,7 +70,7 @@ function syncAbilityEffects(r){
  positionAbilityWheel(r);
  positionAbilityShuffle(r);
  syncAbilityCinematic(r);
- if(r?.abilityEffect||r?.phase==='one-word'){closeAbilityCoin();return;}
+ if(r?.abilityEffect||['one-word','pair-rooms','suspicions'].includes(r?.phase)){closeAbilityCoin();return;}
  const event=r?.ability?.coin;
  if(!event||['waiting','ended'].includes(r.phase)){closeAbilityCoin();if(!event){abilityCoinSeen='';abilityCoinEvent=null;}return;}
  let dialog=$('ability-effect');

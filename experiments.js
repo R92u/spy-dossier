@@ -1,6 +1,6 @@
 'use strict';
 const {randomInt}=require('node:crypto');
-const defaults=()=>({enabled:false,flashWord:false,multiSpy:false,spyCount:1,spiesKnowEachOther:false,cooperative:false,micChaos:false,micChance:10});
+const defaults=()=>({enabled:false,flashWord:false,multiSpy:false,spyCount:1,spiesKnowEachOther:false,cooperative:false,micChaos:false,micChance:10,suspicions:false,commonGround:false});
 
 class Experiments{
  constructor(game){this.game=game;this.random=randomInt;}
@@ -17,9 +17,12 @@ class Experiments{
    this.game.need(!r.testMode&&!this.game.abilities.needsDiscord(r),'Сначала выключите одиночный тест и способности, которым нужен Discord.');
    r.experimentSettings=defaults();this.game.voice.configure(r,{enabled:false,radius:this.game.voice.settings(r).radius});return;
   }
+  for(const key of ['suspicions','commonGround'])this.game.need(d[key]===undefined||typeof d[key]==='boolean','Некорректные настройки режима.');
+  if(d.commonGround&&!d.cooperative)this.game.need(this.game.abilities.discordReady(r),'Для парных комнат привяжите Discord-профиль и включите микрофоны.');
   const next=Object.fromEntries([...bools,'spyCount','micChance'].map(key=>[key,d[key]]));
+  next.suspicions=!!d.suspicions;next.commonGround=!!d.commonGround;
   if(next.cooperative){
-   Object.assign(next,{flashWord:false,multiSpy:false,spyCount:1,spiesKnowEachOther:false,micChaos:false});
+   Object.assign(next,{flashWord:false,multiSpy:false,spyCount:1,spiesKnowEachOther:false,micChaos:false,suspicions:false,commonGround:false});
    this.game.voice.configure(r,{enabled:false,radius:0});
    r.abilitySettings={...this.game.abilities.settings(r),enabled:false};
   }
@@ -29,6 +32,7 @@ class Experiments{
  ready(r){
   const s=this.settings(r);if(!s.enabled)return;
   if(s.cooperative){this.game.need(!r.testMode&&!this.game.voice.settings(r).enabled&&!this.game.abilities.settings(r).enabled,'Совместный режим несовместим с тестом, микрофонами и способностями.');return;}
+  if(s.commonGround)this.game.pairs.ready(r);
   if(s.multiSpy)this.game.need(!r.testMode&&this.game.players(r).length>s.spyCount*2,'Для выбранного числа шпионов нужно больше мирных игроков.');
  }
  begin(r){r.dossierReveals={};r.micInterrupted=null;r.micTurnKey=null;r.micNextAt=null;}

@@ -28,7 +28,7 @@ class VoiceBridge{
   const settings=this.settings(r);
   if(!settings.enabled||['waiting','ended'].includes(r.phase))return {mode:'release',allowed:[]};
   // Discussion and guessing always restore microphones, including an ability mute.
-  if(['voting','guessing'].includes(r.phase))return {mode:'all',allowed:[]};
+  if(['voting','guessing'].includes(r.phase)||r.phase==='pair-rooms'&&r.pairEvent?.stage==='talk')return {mode:'all',allowed:[]};
   if(r.phase!=='playing')return {mode:'turn',allowed:[]};
   const seats=r.order.filter(id=>r.players.some(p=>p.id===id&&p.alive));
   const silence=r.silence,muted=silence&&(silence.pending||r.turnSerial<=silence.untilTurn)?silence.targetId:null;
@@ -41,7 +41,7 @@ class VoiceBridge{
   }
   return {mode:'turn',allowed:[...allowed]};
  }
- poll(token,d){const l=this.link(token),r=this.game.rooms.get(l.room);if(!r){this.links.delete(l.room);return {mode:'release',closed:true,allowed:[]};}this.game.need(Array.isArray(d.roster)&&d.roster.length<=200&&d.roster.every(snowflake),'Некорректный список участников.');this.syncProfiles(r,l);l.roster=[...new Set(d.roster)];l.lastSeen=this.game.now();l.error=d.error?String(d.error).slice(0,160):null;return {...this.policy(r,l),guildId:l.guildId,channelId:l.channelId,leaseMs:5000};}
+ poll(token,d){const l=this.link(token),r=this.game.rooms.get(l.room);if(!r){this.links.delete(l.room);return {mode:'release',closed:true,allowed:[]};}this.game.need(Array.isArray(d.roster)&&d.roster.length<=200&&d.roster.every(snowflake),'Некорректный список участников.');this.syncProfiles(r,l);l.roster=[...new Set(d.roster)];l.lastSeen=this.game.now();l.pairRooms=d.pairRooms===1;this.game.pairs.report(r,d.pairReport);l.error=d.error?String(d.error).slice(0,160):null;return {...this.policy(r,l),...(r.pairEvent?{pairEvent:this.game.pairs.command(r,l)}:{}),guildId:l.guildId,channelId:l.channelId,leaseMs:5000};}
  ready(r){if(!this.settings(r).enabled)return;const l=this.links.get(r.code);if(l)this.syncProfiles(r,l);this.game.need(l&&l.lastSeen&&this.game.now()-l.lastSeen<6000&&!l.error,'Бот не готов. Проверьте подключение и права Discord.');this.game.need(r.players.filter(p=>!p.simulated).every(p=>l.members.has(p.id)&&l.roster.includes(l.members.get(p.id))),'Все игроки и ведущий должны привязать Discord и зайти в войс.');}
  view(r,s){const l=this.links.get(r.code);if(l)this.syncProfiles(r,l);const invite=[...this.invites].find(([,i])=>i.room===r.code&&i.playerId===s.id&&i.expires>this.game.now());const policy=r.testMode&&l?this.policy(r,l):null;return {...this.settings(r),expected:policy?(policy.mode==='turn'&&!policy.allowed.includes(s.discord?.userId)?'muted':'open'):null,connected:!!l,online:!!l&&!!l.lastSeen&&this.game.now()-l.lastSeen<6000,channelName:l?.channelName||'',error:l?.error||'',linked:!!l?.members.has(s.id),conflict:!!s.discord&&!!l&&!l.members.has(s.id)&&[...l.members.values()].includes(s.discord.userId),linkedPlayers:r.players.filter(p=>l?.members.has(p.id)).map(p=>p.id),code:invite?.[0]||''};}
  tick(){for(const [code,i]of this.invites)if(i.expires<this.game.now()||!this.game.rooms.has(i.room))this.invites.delete(code);for(const [room,l]of this.links)if(!this.game.rooms.has(room)&&this.game.now()-l.lastSeen>60000)this.links.delete(room);}
