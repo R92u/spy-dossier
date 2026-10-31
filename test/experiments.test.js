@@ -21,12 +21,12 @@ function setup(count=5,patch={}){
    if(g.view(s).room.dossier?.canReveal){g.act(s,'dossierReveal');advance(1000);}
    g.act(s,'ready');
   }
-  advance(4500);
+  advance(5000);
  };
  const voteOut=id=>{
   const voters=players.filter(s=>r.players.find(p=>p.id===s.id)?.alive);
   g.act(voters[0],'voteStart');
-  voters.forEach(s=>g.act(s,'vote',{targetId:id}));
+  for(const s of voters){if(r.phase!=='voting')break;g.act(s,'vote',{targetId:id});}
   advance(g.voteMs);
  };
  let token;
@@ -59,7 +59,7 @@ test('one-second dossier keeps the word private before opening and after its exa
  assert.equal(g.view(reader).room.dossier.canReveal,true);
  assert.equal(g.view(reader).room.dossier.used,false);
  assert.equal(g.view(host).room.word,'Маяк');
- assert.throws(()=>g.act(other,'dossierReveal'));
+ assert.equal(g.view(other).room.dossier.canReveal,true);
  assert.throws(()=>g.act(host,'dossierReveal'));
  assert.throws(()=>g.act(players[0],'dossierReveal'));
  assert.throws(()=>g.act(reader,'ready'));
@@ -338,6 +338,6 @@ test('solo testing keeps its required Discord mode and rejects cooperative mode'
  assert.throws(()=>g.act(s,'experimentSettings',{...defaults,enabled:false}));
  assert.equal(g.view(s).room.voice.enabled,true);
  const token=g.voice.connect({code:g.voice.invite(r,s),guildId:'200000000000000001',channelId:'200000000000000002',channelName:'Solo',userId}).token;
- g.voice.poll(token,{roster:[userId]});g.act(s,'start',{});g.act(s,'ready');now+=4500;g.tick();
+ g.voice.poll(token,{roster:[userId]});g.act(s,'start',{});g.act(s,'ready');now+=5000;g.tick();
  assert.equal(r.phase,'playing');assert.equal(g.view(s).room.role,'spy');assert.equal(r.players.length,4);
 });

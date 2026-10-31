@@ -25,7 +25,7 @@ class PairRooms{
   }else if(e.stage==='return'&&d.status==='returned')this.complete(r);
  }
  returning(r){const e=r.pairEvent;if(e&&e.stage!=='return'){e.stage='return';e.deadline=this.game.now()+90000;}}
- complete(r){const e=r.pairEvent;if(!e)return;r.pairEvent=null;if(r.phase!=='pair-rooms')return;if(e.error)r.notice=e.error+' Игра продолжена.';if(e.resume==='selecting'){r.phase='selecting';r.selectionEndsAt=this.game.now()+4500;}else{r.phase='playing';if(!this.game.alive(r).some(p=>p.id===r.current))this.game.next(r);}}
+ complete(r){const e=r.pairEvent;if(!e)return;r.pairEvent=null;if(r.phase!=='pair-rooms')return;if(e.error)r.notice=e.error+' Игра продолжена.';if(e.resume==='selecting'){this.game.beginCountdown(r);}else{r.phase='playing';if(!this.game.alive(r).some(p=>p.id===r.current))this.game.next(r);}}
  tick(r){const e=r.pairEvent;if(!e)return;const l=this.game.voice.links.get(r.code),now=this.game.now();if(e.stage==='talk'&&now>=e.endsAt)this.returning(r);else if(e.stage==='prepare'&&now>=e.deadline){e.error='Подготовка комнат заняла слишком долго.';this.returning(r);}else if(e.stage==='return'&&e.deadline!==null&&now>=e.deadline){e.error='Бот не подтвердил возврат. Проверьте голосовой канал или завершите раунд.';e.deadline=null;}if(!l&&e.stage!=='return'){e.error='Связь с ботом потеряна.';this.returning(r);}}
  view(r){const e=r.pairEvent;return e?{id:e.id,kind:e.kind,groups:e.groups.map(g=>[...g]),stage:e.stage,startedAt:e.startedAt,endsAt:e.endsAt,progress:e.progress,error:e.error}:null;}
 }

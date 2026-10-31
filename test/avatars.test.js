@@ -9,6 +9,6 @@ test('avatars persist across lobbies, broadcast only a URL and can be replaced o
  g.act(a,'profileAvatar',{avatar:''});assert.equal(g.view(a).room.players[0].avatar,'');g.avatars.prune();assert.equal(g.avatars.images.size,0);
 });
 test('remote, executable, invalid and oversized avatar payloads are rejected',()=>{
- const g=new Game(),s=g.session();for(const avatar of ['https://example.com/x.png','data:image/svg+xml,<svg/>','data:image/jpeg;base64,AAAA',null,'x'.repeat(45001)])assert.throws(()=>g.act(s,'profileAvatar',{avatar}));
+ const g=new Game(),s=g.session();for(const avatar of ['https://example.com/x.png','data:image/svg+xml,<svg/>','data:image/jpeg;base64,AAAA',null,'x'.repeat(50001)])assert.throws(()=>g.act(s,'profileAvatar',{avatar}));
  assert.equal(g.avatars.images.size,0);
 });

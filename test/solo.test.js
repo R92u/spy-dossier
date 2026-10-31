@@ -13,7 +13,7 @@ function setup(name='aqr1337'){
  const poll=(roster=[userId])=>g.voice.poll(token,{roster});
  const advance=ms=>{now+=ms;g.tick();};
  const start=()=>g.act(s,'start',{});
- const playing=()=>{start();g.act(s,'ready');advance(4501);};
+ const playing=()=>{start();g.act(s,'ready');advance(5001);};
  return {g,s,r,enable,connect,poll,advance,start,playing};
 }
 test('solo switch requires signed aqr1337 profile and room ownership',()=>{
@@ -43,7 +43,7 @@ test('solo follows real dossier, selection, own turn and virtual turn mute polic
  const {g,s,r,enable,connect,poll,advance,start}=setup();enable();connect();start();
  assert.deepEqual(poll().allowed,[]);assert.equal(g.view(s).room.voice.expected,'muted');
  g.act(s,'ready');assert.equal(r.phase,'selecting');assert.deepEqual(poll().allowed,[]);
- advance(4501);assert.equal(r.current,s.id);assert.deepEqual(poll().allowed,[userId]);assert.equal(g.view(s).room.voice.expected,'open');
+ advance(5001);assert.equal(r.current,s.id);assert.deepEqual(poll().allowed,[userId]);assert.equal(g.view(s).room.voice.expected,'open');
  g.act(s,'next');assert.notEqual(r.current,s.id);assert.deepEqual(poll().allowed,[]);
  for(let i=0;i<3;i++)g.act(s,'next');assert.equal(r.current,s.id);assert.deepEqual(poll().allowed,[userId]);
 });
@@ -54,9 +54,9 @@ test('solo whisper radius includes the real microphone next to virtual seats',()
 test('solo voting unmutes, accepts one human vote, and resumes the actual table',()=>{
  const {g,s,r,enable,connect,poll,playing}=setup();enable();connect();playing();g.act(s,'next');g.act(s,'voteStart');
  assert.equal(poll().mode,'all');assert.equal(g.view(s).room.vote.total,1);assert.equal(g.view(s).room.vote.required,1);
- const target=r.players.find(p=>p.simulated);g.act(s,'vote',{targetId:target.id});g.act(s,'testVoteEnd');
+ const target=r.players.find(p=>p.simulated);g.act(s,'vote',{targetId:target.id});
  assert.equal(r.phase,'playing');assert.equal(target.alive,false);assert.equal(poll().mode,'turn');
- g.act(s,'voteStart');g.act(s,'vote',{targetId:s.id});g.act(s,'testVoteEnd');assert.equal(r.phase,'ended');assert.equal(poll().mode,'release');
+ g.act(s,'voteStart');g.act(s,'vote',{targetId:s.id});assert.equal(r.phase,'ended');assert.equal(poll().mode,'release');
 });
 test('solo guessing unmutes, ends normally, resets without duplicate virtual players',()=>{
  const {g,s,r,enable,connect,poll,playing,start}=setup();enable();connect();playing();g.act(s,'guessStart');assert.equal(poll().mode,'all');

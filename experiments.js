@@ -40,7 +40,7 @@ class Experiments{
  flash(r,s){return this.settings(r).enabled&&this.settings(r).flashWord&&!this.cooperative(r)&&s.id!==r.hostId&&!this.game.isSpy(r,s.id);}
  dossier(r,s){
   const entry=r.dossierReveals?.[s.id],eligible=this.flash(r,s),p=r.players.find(p=>p.id===s.id);
-  return {canReveal:!!(eligible&&p?.alive&&r.phase==='reveal'&&this.game.dealTo(r)===s.id&&!entry),used:!!entry,expiresAt:entry?.expiresAt??null};
+  return {canReveal:!!(eligible&&p?.alive&&r.phase==='reveal'&&!p.ready&&!entry),used:!!entry,expiresAt:entry?.expiresAt??null};
  }
  reveal(r,s){
   this.game.need(this.dossier(r,s).canReveal,'Досье недоступно или уже открывалось.');

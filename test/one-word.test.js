@@ -9,7 +9,7 @@ function setup(){
  g.profiles.confirm(secret,{code:g.profiles.invite(host),userId:ids[0],name:'HostDiscord'});g.act(host,'voiceSettings',{enabled:true,radius:6});g.act(host,'abilitySettings',settings);
  const token=g.voice.connect({code:g.voice.invite(r,host),guildId:ids[0],channelId:ids[1],channelName:'Test',userId:ids[0]}).token;
  const poll=()=>g.voice.poll(token,{roster:ids});poll();players.forEach((s,i)=>g.voice.join(token,{code:g.voice.invite(r,s),userId:ids[i+1]}));
- g.act(host,'start',{word:'Маяк',theme:'Море',hint:'Свет',spyId:players[0].id});while(g.dealTo(r))g.act(players.find(s=>s.id===g.dealTo(r)),'ready');now+=4500;g.tick();poll();
+ g.act(host,'start',{word:'Маяк',theme:'Море',hint:'Свет',spyId:players[0].id});while(g.dealTo(r))g.act(players.find(s=>s.id===g.dealTo(r)),'ready');now+=5000;g.tick();poll();
  r.order=players.map(s=>s.id);r.current=players[1].id;
  return {g,r,host,players,poll,advance:ms=>{now+=ms;g.tick();}};
 }

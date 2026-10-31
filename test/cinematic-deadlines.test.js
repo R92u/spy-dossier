@@ -12,8 +12,8 @@ function setup(t){
  g.act(host,'abilitySettings',{enabled:true,wheel:false,censored:true,pool:['reverse']});
  g.act(host,'start',{word:'Маяк',theme:'Море',hint:'Свет',spyId:players[0].id});
  while(g.dealTo(r))g.act(players.find(p=>p.id===g.dealTo(r)),'ready');
- app.broadcast();t.mock.timers.tick(4500);
- assert.equal(r.phase,'playing','selection must end at 4500ms, between heartbeat ticks');
+ app.broadcast();t.mock.timers.tick(5000);
+ assert.equal(r.phase,'playing','selection must end at 5000ms, between heartbeat ticks');
  return {app,g,r,players};
 }
 test('cinematic deadlines resume play without waiting for the next heartbeat',t=>{

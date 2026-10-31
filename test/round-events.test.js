@@ -11,7 +11,7 @@ function setup({ability='cross',common=false,suspicions=false,count=5,oldBot=fal
  const token=g.voice.connect({code:g.voice.invite(r,host),guildId:ids[0],channelId:ids[1],channelName:'Test',userId:ids[0]}).token;
  const poll=(pairReport,extra={})=>g.voice.poll(token,{roster:ids,pairRooms:oldBot?0:1,pairReport,...extra});poll();players.forEach((s,i)=>g.voice.join(token,{code:g.voice.invite(r,s),userId:ids[i+1]}));
  const start=()=>{g.act(host,'start',{word:'Маяк',theme:'Море',hint:'Свет',spyId:players[0].id});while(g.dealTo(r))g.act(players.find(s=>s.id===g.dealTo(r)),'ready');};
- start();if(!common){now+=4500;g.tick();poll();r.order=players.map(s=>s.id);r.current=players[1].id;}
+ start();if(!common){now+=5000;g.tick();poll();r.order=players.map(s=>s.id);r.current=players[1].id;}
  return {g,r,host,players,poll,ids,advance:ms=>{now+=ms;g.tick();}};
 }
 test('cross pairs chosen spy partner, creates one trio and freezes until bot acknowledgements',()=>{
@@ -36,7 +36,7 @@ test('old or stale bots and invalid targets cannot consume the ability',()=>{
 });
 test('common ground starts once after all dossiers and before first-turn selection',()=>{
  const {g,r,host,poll,advance}=setup({common:true});assert.equal(r.phase,'pair-rooms');assert.equal(r.pairEvent.kind,'common');const id=r.pairEvent.id;
- poll({id,status:'ready'});advance(20000);poll({id,status:'returned'});assert.equal(r.phase,'selecting');advance(4500);assert.equal(r.phase,'playing');
+ poll({id,status:'ready'});advance(20000);poll({id,status:'returned'});assert.equal(r.phase,'selecting');advance(5000);assert.equal(r.phase,'playing');
  for(let i=0;i<12;i++)g.act(host,'next');assert.equal(r.phase,'playing');assert.equal(r.pairEvent,null);
 });
 test('ending and closing a room withdraw pair commands for bot cleanup',()=>{

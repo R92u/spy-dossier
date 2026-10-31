@@ -7,7 +7,7 @@ function setup(kind){
  players.forEach((s,i)=>g.act(s,'join',{name:'Player'+i,code:host.room}));const r=g.room(host);
  g.act(host,'abilitySettings',{enabled:true,wheel:false,censored:true,pool:[kind]});
  g.act(host,'start',{word:'Маяк',theme:'Море',hint:'Свет',spyId:players[0].id});
- while(g.dealTo(r))g.act(players.find(p=>p.id===g.dealTo(r)),'ready');now+=4500;g.tick();
+ while(g.dealTo(r))g.act(players.find(p=>p.id===g.dealTo(r)),'ready');now+=5000;g.tick();
  r.order=players.map(p=>p.id);r.current=players[0].id;
  r.voiceSettings={enabled:true,radius:0};const link={members:new Map(players.map(p=>[p.id,p.id]))};
  return {g,r,host,players,advance:ms=>{now+=ms;g.tick();},policy:()=>g.voice.policy(r,link)};

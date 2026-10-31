@@ -31,7 +31,7 @@ class Abilities{
   const settings=this.settings(r);if(!settings.enabled||this.game.experiments.cooperative(r))return;
   const ids=(r.spyIds||[r.spyId]).filter(Boolean);r.spyAbilities=Object.fromEntries(ids.map(id=>[id,this.fresh(settings.pool[this.random(settings.pool.length)])]));
   r.abilityState=r.spyAbilities[r.spyId];const id=r.abilityState.id;
-  if(settings.wheel){const startedAt=this.game.now();r.phase='ability-draw';r.abilityDraw={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+5000,pool:[...settings.pool],result:id,censored:settings.censored};}
+  if(settings.wheel&&this.game.modulation(r).animations){const startedAt=this.game.now();r.phase='ability-draw';r.abilityDraw={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+5000,pool:[...settings.pool],result:id,censored:settings.censored};}
  }
  fresh(id){return {id,used:false,letter:null,coin:null,feedback:null};}
  clear(r){r.oneWord=null;r.abilityEffect=null;r.turnDirection=1;r.spyAbilities=null;r.publicAbilityCoin=null;r.abilityState=null;r.abilityDraw=null;r.silence=null;r.abilityShuffle=null;r.spotlight=null;r.turnQueue=null;r.turnAnchor=null;r.turnOrderSignature=null;r.cycleSpoken=[];}
@@ -107,7 +107,7 @@ class Abilities{
   if(ability.id==='oneword'){this.game.voice.ready(r);this.game.oneWord.begin(r);ability.used=true;return;}
   if(ability.id==='coin'){
    const startedAt=this.game.now();ability.used=true;
-   ability.coin={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+2400,outcome:this.random(2)===0?'heads':'tails'};r.publicAbilityCoin=ability.coin;
+   ability.coin={id:randomBytes(12).toString('hex'),startedAt,endsAt:startedAt+(this.game.modulation(r).animations?2400:0),outcome:this.random(2)===0?'heads':'tails'};r.publicAbilityCoin=ability.coin;if(!this.game.modulation(r).animations)this.tick(r);
    return;
   }
   if(ability.id==='vowels'){
@@ -124,7 +124,7 @@ class Abilities{
    const startedAt=this.game.now();r.order=order;r.current=order[this.random(order.length)];r.cycle++;r.turnSerial=(r.turnSerial||1)+1;
    r.turnDirection=1;r.turnQueue=null;this.ensureTurns(r);r.phase='shuffling';
    r.abilityShuffle={id:randomBytes(12).toString('hex'),startedAt,blackoutEndsAt:startedAt+1200,endsAt:startedAt+5700};
-   ability.used=true;return;
+   if(!this.game.modulation(r).animations){r.phase='playing';r.abilityShuffle=null;}ability.used=true;return;
   }
   if(ability.id==='reverse'){
    this.ensureTurns(r);const live=new Set(this.game.alive(r).map(p=>p.id));
@@ -143,7 +143,7 @@ class Abilities{
   r.silence={targetId:target.id,pending:target.id!==r.current,untilTurn:target.id===r.current?r.turnSerial+1:null};
   if(target.id===r.current)this.game.next(r);
  }
- effect(r,kind,duration,extra={}){const startedAt=this.game.now();r.abilityEffect={id:randomBytes(12).toString('hex'),kind,startedAt,endsAt:startedAt+duration,...extra};r.phase='ability-effect';}
+ effect(r,kind,duration,extra={}){if(!this.game.modulation(r).animations)return;const startedAt=this.game.now();r.abilityEffect={id:randomBytes(12).toString('hex'),kind,startedAt,endsAt:startedAt+duration,...extra};r.phase='ability-effect';}
  tick(r){
   this.prune(r);
   if(r.phase==='ability-effect'&&r.abilityEffect?.endsAt<=this.game.now()){r.abilityEffect=null;r.phase='playing';}

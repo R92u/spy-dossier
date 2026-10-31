@@ -79,7 +79,7 @@ function syncAbilityEffects(r){
   abilityCoinSeen=event.id;abilityCoinEvent=null;
   // A reconnect should show a result once, but never replay a past throw.
   if(gameTime()>event.endsAt+5000)return;
-  dialog.innerHTML=coinMarkup();dialog.showModal();
+  dialog.innerHTML=coinMarkup();if(r.modulation?.animations===false){dialog.querySelector('.gold-coin').classList.remove('spinning');}dialog.showModal();
   const elapsed=Math.max(0,gameTime()-event.startedAt);
   dialog.querySelector('.coin-flight').style.animationDelay=-elapsed+'ms';
   dialog.querySelector('.gold-coin').style.animationDelay=-elapsed+'ms';
@@ -89,7 +89,7 @@ function syncAbilityEffects(r){
  abilityCoinEvent=resultKey;
  if(event.outcome){
   const coin=dialog.querySelector('.gold-coin'),from=getComputedStyle(coin).transform,angle=event.outcome==='heads'?'0deg':'180deg';coin.dataset.side=event.outcome;coin.classList.remove('spinning');coin.classList.add('landed');coin.style.setProperty('--coin-face-angle',angle);
-  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)coin.animate([{transform:from},{transform:document.body.classList.contains('flat-mode')?'rotate(0deg)':`rotateY(${angle})`}],{duration:450,easing:'cubic-bezier(.2,.7,.3,1)'});
+  if(r.modulation?.animations!==false&&!matchMedia('(prefers-reduced-motion: reduce)').matches)coin.animate([{transform:from},{transform:document.body.classList.contains('flat-mode')?'rotate(0deg)':`rotateY(${angle})`}],{duration:450,easing:'cubic-bezier(.2,.7,.3,1)'});
   const letter=r.ability.letter;
   dialog.querySelector('.coin-result').innerHTML=`<h2>${event.outcome==='heads'?'Орёл':'Решка'}</h2>${letter?`<p>Первая буква слова</p><strong class="coin-letter">${esc(letter)}</strong>`:`<p>${event.outcome==='heads'?'Шпион получил первую букву.':'Бросок использован. Подсказки нет.'}</p>`}`;
   clearTimeout(coinCloseTimer);coinCloseTimer=setTimeout(closeAbilityCoin,letter?4000:2500);

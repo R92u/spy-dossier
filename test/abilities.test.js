@@ -12,7 +12,7 @@ function setup(count=5){
  const configure=(patch={})=>g.act(host,'abilitySettings',{enabled:true,wheel:true,censored:false,pool:['coin'],...patch});
  const advance=ms=>{now+=ms;g.tick();};
  const start=(word='Е\u0308лка')=>g.act(host,'start',{word,theme:'Зима',hint:'Зелёная',spyId:players[0].id});
- const ready=()=>{while(g.dealTo(r))g.act(players.find(s=>s.id===g.dealTo(r)),'ready');advance(4500);};
+ const ready=()=>{while(g.dealTo(r))g.act(players.find(s=>s.id===g.dealTo(r)),'ready');advance(5000);};
  const profile=()=>g.profiles.confirm(secret,{code:g.profiles.invite(host),userId:ids[0],name:'HostDiscord'});
  let token;
  const connect=()=>{
@@ -192,7 +192,7 @@ test('testAbility is restricted to verified solo ownership and safely refreshes 
  let now=1000;const g=new Game({now:()=>now,profileSecret:secret}),s=g.session();g.connection(s,true);
  const userId='100000000000000001';g.profiles.confirm(secret,{code:g.profiles.invite(s),userId,name:'aqr1337'});g.act(s,'create',{name:'Solo'});g.act(s,'testMode',{enabled:true});const r=g.room(s);
  const token=g.voice.connect({code:g.voice.invite(r,s),guildId:'200000000000000001',channelId:'200000000000000002',userId}).token;
- const poll=()=>g.voice.poll(token,{roster:[userId]});poll();g.act(s,'start',{});assert.throws(()=>g.act(s,'testAbility',{id:'coin'}));g.act(s,'ready');now+=4500;g.tick();poll();
+ const poll=()=>g.voice.poll(token,{roster:[userId]});poll();g.act(s,'start',{});assert.throws(()=>g.act(s,'testAbility',{id:'coin'}));g.act(s,'ready');now+=5000;g.tick();poll();
  for(const id of ['coin','silence','vowels','probe','shuffle','reverse','spotlight']){g.act(s,'testAbility',{id});assert.equal(r.abilityState.id,id);assert.equal(r.abilityState.used,false);}
  g.act(s,'abilityUse',{targetId:r.players.find(p=>p.simulated).id});assert.throws(()=>g.act(s,'testAbility',{id:'coin'}));now+=7000;g.tick();poll();g.act(s,'next');
  g.act(s,'testAbility',{id:'silence'});g.act(s,'abilityUse',{targetId:s.id});assert.ok(r.silence);g.act(s,'testAbility',{id:'probe'});assert.equal(r.silence,null);

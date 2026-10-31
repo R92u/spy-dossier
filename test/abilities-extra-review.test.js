@@ -14,7 +14,7 @@ function normal(id,count=6){
  g.act(host,'abilitySettings',{enabled:true,wheel:false,censored:true,pool:[id]});
  g.act(host,'start',{word:'Маяк',theme:'Море',hint:'Свет',spyId:spy.id});
  while(g.dealTo(r))g.act(players.find(s=>s.id===g.dealTo(r)),'ready');
- now+=4500;g.tick();
+ now+=5000;g.tick();
  const next=()=>{g.act(host,'next');return r.current;};
  return {g,r,host,players,spy,next,advance:ms=>{now+=ms;g.tick();}};
 }
@@ -64,7 +64,7 @@ test('solo ability switching keeps a reversed queue intact across a temporary ex
  const userId='100000000000000001';g.profiles.confirm(secret,{code:g.profiles.invite(s),userId,name:'aqr1337'});
  g.act(s,'create',{name:'Tester'});g.act(s,'testMode',{enabled:true});const r=g.rooms.get(s.room);
  const token=g.voice.connect({code:g.voice.invite(r,s),guildId:'100000000000000002',channelId:'100000000000000003',channelName:'Review',userId}).token;
- const poll=()=>g.voice.poll(token,{roster:[userId]});poll();g.act(s,'start',{});g.act(s,'ready');now+=4500;g.tick();poll();
+ const poll=()=>g.voice.poll(token,{roster:[userId]});poll();g.act(s,'start',{});g.act(s,'ready');now+=5000;g.tick();poll();
  const ring=clockwise(r),next=()=>{g.act(s,'next');return r.current;};
  assert.equal(next(),ring[1]);g.act(s,'testAbility',{id:'reverse'});g.act(s,'abilityUse');now+=5700;g.tick();poll();
  const remaining=ring.slice(2).reverse(),cycle=r.cycle;
